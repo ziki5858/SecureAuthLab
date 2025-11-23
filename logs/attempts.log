@@ -1,0 +1,3 @@
+{"timestamp": "2025-11-23T15:19:47.827426", "username": "user01", "hash_mode": "N/A", "group_seed": 6631928, "protection_flags": [], "latency_ms": 0.0, "result": "fail"}
+{"timestamp": "2025-11-23T15:22:25.593949", "username": "user01", "hash_mode": "sha256", "group_seed": 6631928, "protection_flags": [], "latency_ms": 0.0, "result": "fail"}
+{"timestamp": "2025-11-23T15:23:18.653663", "username": "user01", "hash_mode": "sha256", "group_seed": 6631928, "protection_flags": [], "latency_ms": 0.0, "result": "success"}
