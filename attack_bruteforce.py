@@ -8,8 +8,8 @@ import itertools
 # ======================================
 # GENERAL SETTINGS
 # ======================================
-MAX_ATTEMPTS = 20000
-MAX_TIME = 30
+MAX_ATTEMPTS = 50000          # new limit
+MAX_TIME = 7200               # 2 hours limit
 GROUP_SEED = "GROUP42"
 
 os.makedirs("logs", exist_ok=True)
@@ -42,7 +42,6 @@ USERS = {
 # SEND LOGIN ATTEMPT
 # ======================================
 def send_attempt(url, username, password):
-    """Send login attempt + measure latency."""
     t0 = time.time()
     try:
         r = requests.post(url, json={
@@ -60,7 +59,6 @@ def send_attempt(url, username, password):
 # GENERATE PASSWORDS IN RANGE
 # ======================================
 def generate_passwords(charset, min_len, max_len):
-    """Yield passwords between min_len and max_len inclusive."""
     for length in range(min_len, max_len + 1):
         for combo in itertools.product(charset, repeat=length):
             yield "".join(combo)
@@ -73,50 +71,70 @@ def brute_force_attack(url, hash_mode, protections_flag, logfile):
     start_time = time.time()
     attempts = 0
 
+    # LOG HEADER
     with open(logfile, "w") as f:
-        pass  # reset file
+        f.write("===========================================\n")
+        f.write("          BRUTE FORCE LOG\n")
+        f.write("===========================================\n")
+        f.write(f"Start Time: {time.ctime(start_time)}\n")
+        f.write(f"Hash Mode: {hash_mode}\n")
+        f.write(f"Protections: {protections_flag}\n")
+        f.write("User Categories: weak, medium, strong\n")
+        f.write(f"Max Attempts: {MAX_ATTEMPTS}\n")
+        f.write(f"Max Time: {MAX_TIME} seconds\n")
+        f.write("===========================================\n\n")
 
     print(f"\n>>> START brute-force: {hash_mode}, protections={protections_flag}")
     print(f"→ Log: {logfile}")
 
-    while True:
-        elapsed = time.time() - start_time
-        if attempts >= MAX_ATTEMPTS or elapsed >= MAX_TIME:
-            print(f"STOP: attempts={attempts}, time={round(elapsed, 2)} sec")
-            return
+    for category, cfg in USERS.items():
+        username = cfg["username"]
+        charset = cfg["charset"]
+        min_len = cfg["min_len"]
+        max_len = cfg["max_len"]
 
-        for category, cfg in USERS.items():
-            username = cfg["username"]
-            charset = cfg["charset"]
-            min_len = cfg["min_len"]
-            max_len = cfg["max_len"]
+        for pwd in generate_passwords(charset, min_len, max_len):
 
-            for pwd in generate_passwords(charset, min_len, max_len):
-                attempts += 1
-
-                status, lat_ms = send_attempt(url, username, pwd)
-
-                entry = {
-                    "timestamp": time.time(),
-                    "group_seed": GROUP_SEED,
-                    "username": username,
-                    "category": category,
-                    "password_attempt": pwd,
-                    "result": status,
-                    "latency_ms": round(lat_ms, 3),
-                    "hash_mode": hash_mode,
-                    "protection_flags": protections_flag
-                }
-
+            # TIME LIMIT CHECK
+            elapsed = time.time() - start_time
+            if elapsed >= MAX_TIME:
+                print("TIME LIMIT REACHED")
                 with open(logfile, "a") as f:
-                    f.write(json.dumps(entry) + "\n")
+                    f.write("\n=== RESULT: TIME LIMIT REACHED ===\n")
+                    f.write(f"Attempts: {attempts}\nTime: {round(elapsed, 2)} sec\n")
+                return
 
-                if attempts >= MAX_ATTEMPTS or (time.time() - start_time) >= MAX_TIME:
-                    return
+            attempts += 1
+            if attempts >= MAX_ATTEMPTS:
+                with open(logfile, "a") as f:
+                    f.write("\n=== RESULT: MAX ATTEMPTS REACHED ===\n")
+                    f.write(f"Attempts: {attempts}\nTime: {round(elapsed, 2)} sec\n")
+                return
 
-                if status == "success":
-                    print(f"[+] SUCCESS for {username} → {pwd}")
-                    return
+            status, lat_ms = send_attempt(url, username, pwd)
+
+            entry = {
+                "timestamp": time.time(),
+                "group_seed": GROUP_SEED,
+                "username": username,
+                "category": category,
+                "password_attempt": pwd,
+                "result": status,
+                "latency_ms": round(lat_ms, 3),
+                "hash_mode": hash_mode,
+                "protection_flags": protections_flag
+            }
+
+            with open(logfile, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+
+            if status == "success":
+                print(f"[+] SUCCESS for {username} → {pwd}")
+                with open(logfile, "a") as f:
+                    f.write("\n=== RESULT: SUCCESS ===\n")
+                    f.write(f"Username: {username}\nPassword: {pwd}\n")
+                    f.write(f"Attempts: {attempts}\nTime: {round(elapsed, 2)} sec\n")
+                return
 
 
 # ======================================
@@ -137,15 +155,12 @@ def main():
 
     for hash_mode, prot, url in CONFIGS:
 
-        # ===================================
-        # RESET SERVER STATE BEFORE ATTACK
-        # ===================================
+        # Reset before each attack
         reset_url = url.replace("/login", "/reset")
         try:
             requests.post(reset_url)
-            print(f"[RESET] Server counters cleared at {reset_url}")
         except:
-            print(f"[RESET ERROR] Could not reset server at {reset_url}")
+            pass
 
         logfile = f"logs/{hash_mode}_{'with' if prot=='ON' else 'no'}_protection.log"
         brute_force_attack(url, hash_mode, prot, logfile)
