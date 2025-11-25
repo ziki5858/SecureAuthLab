@@ -67,7 +67,7 @@ def verify_password(password_attempt: str, user: dict) -> bool:
     use_pepper = user.get("use_pepper", False)
 
     # Append pepper only if configured for this user
-    pwd = password_attempt + PEPPER if use_pepper else password_attempt
+    pwd = (password_attempt + PEPPER) if use_pepper else password_attempt
 
     # SHA-256 + salt verification
     if hash_mode == "sha256":
