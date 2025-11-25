@@ -1,0 +1,5 @@
+{"timestamp": 1764066672.0368307, "group_seed": "GROUP42", "username": "user01", "category": "weak", "password_attempt": "aaaa", "result": "error", "latency_ms": 2039.708, "hash_mode": "sha256", "protection_flags": "ON"}
+{"timestamp": 1764066674.0867739, "group_seed": "GROUP42", "username": "user01", "category": "weak", "password_attempt": "aaab", "result": "error", "latency_ms": 2048.939, "hash_mode": "sha256", "protection_flags": "ON"}
+{"timestamp": 1764066676.1407871, "group_seed": "GROUP42", "username": "user01", "category": "weak", "password_attempt": "aaac", "result": "error", "latency_ms": 2052.012, "hash_mode": "sha256", "protection_flags": "ON"}
+{"timestamp": 1764066678.1837976, "group_seed": "GROUP42", "username": "user01", "category": "weak", "password_attempt": "aaad", "result": "error", "latency_ms": 2042.037, "hash_mode": "sha256", "protection_flags": "ON"}
+{"timestamp": 1764066680.2338717, "group_seed": "GROUP42", "username": "user01", "category": "weak", "password_attempt": "aaae", "result": "error", "latency_ms": 2049.072, "hash_mode": "sha256", "protection_flags": "ON"}
