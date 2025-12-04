@@ -1,0 +1,8 @@
+flask
+bcrypt
+argon2-cffi
+pyotp
+requests
+pandas
+matplotlib
+seaborn

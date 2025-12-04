@@ -1,225 +1,209 @@
-import json
 import os
-import math
-from collections import defaultdict
+import pandas as pd
 import matplotlib.pyplot as plt
-import csv
+import seaborn as sns
+import math
 
+# =========================================
+# CONFIGURATION
+# =========================================
 LOG_DIR = "logs"
 OUT_DIR = "analysis_output"
 os.makedirs(OUT_DIR, exist_ok=True)
 
-GROUP_SEED = 6631928
-
+# Keyspace definitions based on generate_users.py
+# Format: Base (charset size) ** Length
 KEYSPACES = {
-    "weak":  {"charset": 36, "min": 4, "max": 6},
-    "medium": {"charset": 62, "min": 7, "max": 10},
-    "strong": {"charset": 70, "min": 11, "max": 16}
+    "weak": {"base": 36, "min_len": 4, "max_len": 6},  # a-z, 0-9
+    "medium": {"base": 62, "min_len": 7, "max_len": 10},  # a-z, A-Z, 0-9
+    "strong": {"base": 70, "min_len": 11, "max_len": 16}  # alphanumeric + symbols
 }
 
-def calc_keyspace(cfg):
-    base = cfg["charset"]
-    total = 0
-    for L in range(cfg["min"], cfg["max"] + 1):
-        total += base ** L
-    return total
+
+def calculate_keyspace_size(category):
+    """Calculates total combinations for the category's length range."""
+    cfg = KEYSPACES.get(category, KEYSPACES["strong"])
+    total_combinations = 0
+    for length in range(cfg["min_len"], cfg["max_len"] + 1):
+        total_combinations += cfg["base"] ** length
+    return total_combinations
 
 
-def load_log(filepath):
-    entries = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            try:
-                if line.startswith("{"):
-                    entries.append(json.loads(line))
-            except:
-                pass
-    return entries
+def parse_filename(filename):
+    """Extracts metadata from filename (e.g., 'bruteforce_user01_baseline.csv')"""
+    parts = filename.replace(".csv", "").split("_")
+    # Simple heuristic to get a readable label
+    if "bruteforce" in filename:
+        return f"BruteForce ({parts[-1]})"
+    elif "spraying" in filename:
+        return f"Spraying ({parts[-1]})"
+    return filename
 
 
-def summarize(entries):
-    if not entries:
+def analyze_log_file(filepath):
+    """Reads a CSV log and returns a summary dictionary."""
+    try:
+        df = pd.read_csv(filepath)
+    except Exception as e:
+        print(f"[!] Could not read {filepath}: {e}")
         return None
 
-    numeric_ts = []
-    for e in entries:
-        ts = e.get("timestamp")
-        if isinstance(ts, (float, int)):
-            numeric_ts.append(ts)
-
-    if not numeric_ts:
+    if df.empty:
         return None
 
-    t_start = min(numeric_ts)
-    t_end = max(numeric_ts)
-    duration = t_end - t_start if t_end > t_start else 1
+    # Convert timestamps
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-    total_attempts = len(entries)
-    attempts_per_sec = total_attempts / duration
+    # 1. Duration & Speed
+    start_time = df['timestamp'].min()
+    end_time = df['timestamp'].max()
+    duration_sec = (end_time - start_time).total_seconds()
+    if duration_sec < 1: duration_sec = 1  # Avoid div/0
 
-    latencies = [e["latency_ms"] for e in entries if isinstance(e.get("latency_ms"), (int, float))]
-    avg_latency = sum(latencies) / len(latencies) if latencies else 0
+    total_attempts = len(df)
+    attempts_per_sec = total_attempts / duration_sec
 
-    successes = [e for e in entries if e.get("result") == "success"]
-    time_to_first_success = None
-    if successes:
-        ts_list = [s["timestamp"] for s in successes if isinstance(s["timestamp"], (int, float))]
-        if ts_list:
-            time_to_first_success = min(ts_list) - t_start
+    # 2. Latency Stats (Assignment Requirement: Mean, Median, 90th Percentile)
+    latency_mean = df['latency_ms'].mean()
+    latency_median = df['latency_ms'].median()
+    latency_p90 = df['latency_ms'].quantile(0.9)
 
-    by_cat = defaultdict(lambda: {"attempts": 0, "successes": 0})
-    for e in entries:
-        cat = e.get("category")
-        by_cat[cat]["attempts"] += 1
-        if e.get("result") == "success":
-            by_cat[cat]["successes"] += 1
+    # 3. Success Analysis
+    success_rows = df[df['status'] == 'success']
+    time_to_crack = None
+    if not success_rows.empty:
+        first_success = success_rows.iloc[0]['timestamp']
+        time_to_crack = (first_success - start_time).total_seconds()
 
     return {
-        "total_attempts": total_attempts,
-        "duration_sec": duration,
-        "attempts_per_sec": attempts_per_sec,
-        "avg_latency_ms": avg_latency,
-        "time_to_first_success": time_to_first_success,
-        "success_by_category": by_cat,
+        "df": df,  # Keep raw data for plotting
+        "summary": {
+            "Label": parse_filename(os.path.basename(filepath)),
+            "Total Attempts": total_attempts,
+            "Duration (s)": round(duration_sec, 2),
+            "Attempts/Sec": round(attempts_per_sec, 2),
+            "Avg Latency (ms)": round(latency_mean, 2),
+            "Median Latency (ms)": round(latency_median, 2),
+            "90% Latency (ms)": round(latency_p90, 2),
+            "Time to Crack (s)": round(time_to_crack, 2) if time_to_crack else None
+        }
     }
 
 
-def extrapolate(summary, entries):
-    results = {}
-    aps = summary["attempts_per_sec"]
+def perform_extrapolation(summary_list):
+    """Calculates estimated time to crack for strong passwords based on observed speed."""
+    extrapolations = []
 
-    cats_seen = set(e.get("category") for e in entries if "category" in e)
+    print("\n--- EXTRAPOLATION ANALYSIS ---")
 
-    for cat in cats_seen:
-        keyspace = calc_keyspace(KEYSPACES[cat])
-        est_time_sec = keyspace / aps if aps > 0 else float("inf")
+    for item in summary_list:
+        stats = item["summary"]
+        aps = stats["Attempts/Sec"]
+        label = stats["Label"]
 
-        results[cat] = {
-            "keyspace": keyspace,
-            "sec": est_time_sec,
-            "hours": est_time_sec / 3600,
-            "days": est_time_sec / 86400,
-        }
-    return results
+        # Only meaningful to extrapolate for Brute Force
+        if "BruteForce" in label and aps > 0:
+            # Calculate for Strong Category
+            keyspace = calculate_keyspace_size("strong")
+            seconds_to_crack = keyspace / aps
+
+            # Convert to readable units
+            days = seconds_to_crack / (24 * 3600)
+            years = days / 365
+
+            extrapolations.append({
+                "Label": label,
+                "Estimated Years (Strong)": years,
+                "Keyspace": keyspace
+            })
+
+            print(f"[{label}] Speed: {aps} att/sec")
+            print(f"   -> Estimated time to crack STRONG password: {years:,.0f} years")
+
+    return pd.DataFrame(extrapolations)
 
 
-def analyze_all():
-    print("\n==================== LOG ANALYSIS REPORT ====================\n")
+def generate_graphs(results):
+    """Generates the required plots."""
+    summary_df = pd.DataFrame([r["summary"] for r in results])
 
-    summary_table = []
-    attempts_sec_data = []
-    latency_data = []
-    extrapolation_days_data = []
+    # Set style
+    sns.set_theme(style="whitegrid")
 
-    for filename in os.listdir(LOG_DIR):
-
-        if not filename.endswith(".log"):
-            continue
-
-        path = os.path.join(LOG_DIR, filename)
-        entries = load_log(path)
-        summary = summarize(entries)
-
-        if summary is None:
-            print(f"[SKIP] {filename} — invalid or missing numeric timestamps\n")
-            continue
-
-        print(f"\n---------------------------------------------------------")
-        print(f" FILE: {filename}")
-        print("---------------------------------------------------------")
-
-        print(f"Total attempts: {summary['total_attempts']}")
-        print(f"Duration (sec): {summary['duration_sec']:.2f}")
-        print(f"Attempts/sec: {summary['attempts_per_sec']:.2f}")
-        print(f"Average latency (ms): {summary['avg_latency_ms']:.2f}")
-
-        if summary["time_to_first_success"]:
-            print(f"Time to first success: {summary['time_to_first_success']:.2f} sec")
-        else:
-            print("Time to first success: None (no success)")
-
-        print("\nSuccess rate by category:")
-        for cat, data in summary["success_by_category"].items():
-            rate = (data["successes"] / data["attempts"]) * 100 if data["attempts"] else 0
-            print(f"  {cat}: {data['successes']} / {data['attempts']}  ({rate:.2f}%)")
-
-        summary_table.append([
-            filename,
-            summary["total_attempts"],
-            round(summary["attempts_per_sec"], 2),
-            round(summary["avg_latency_ms"], 2),
-            summary["time_to_first_success"]
-        ])
-
-        attempts_sec_data.append((filename, summary["attempts_per_sec"]))
-        latency_data.append((filename, summary["avg_latency_ms"]))
-
-        if summary["time_to_first_success"] is None:
-            print("\n>>> EXTRAPOLATION (no success found)")
-            ex = extrapolate(summary, entries)
-            for cat, data in ex.items():
-                extrapolation_days_data.append((f"{filename}-{cat}", data["days"]))
-                print(f"\nCategory: {cat}")
-                print(f"  Keyspace: {data['keyspace']:,}")
-                print(f"  Estimated time (sec): {data['sec']:.2e}")
-                print(f"  Estimated time (hours): {data['hours']:.2e}")
-                print(f"  Estimated time (days): {data['days']:.2e}")
-
-    # =====================
-    # EXPORT TABLE CSV
-    # =====================
-    with open(os.path.join(OUT_DIR, "summary_table.csv"), "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Config", "Total Attempts", "Attempts/sec", "Avg Latency (ms)", "Time to First Success"])
-        writer.writerows(summary_table)
-
-    # =====================
-    # GRAPH: Attempts/sec
-    # =====================
-    labels, values = zip(*attempts_sec_data)
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, values, color="skyblue")
-    plt.xticks(rotation=45, ha="right")
-    plt.title("Attempts per Second by Configuration")
-    plt.ylabel("Attempts/sec")
+    # 1. Attempts Per Second Comparison
+    plt.figure(figsize=(10, 6))
+    sns.barplot(data=summary_df, x="Label", y="Attempts/Sec", palette="viridis")
+    plt.xticks(rotation=45)
+    plt.title("Attack Speed Comparison (Attempts/Sec)")
     plt.tight_layout()
-    plt.savefig(os.path.join(OUT_DIR, "attempts_per_sec.png"))
+    plt.savefig(f"{OUT_DIR}/attempts_per_sec.png")
     plt.close()
 
-    # =====================
-    # GRAPH: latency
-    # =====================
-    labels, values = zip(*latency_data)
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, values, color="orange")
-    plt.xticks(rotation=45, ha="right")
-    plt.ylabel("Avg Latency (ms)")
-    plt.title("Average Latency per Configuration")
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUT_DIR, "avg_latency.png"))
-    plt.close()
+    # 2. Latency Distribution (Box Plot)
+    # Combine all raw dataframes
+    all_dfs = []
+    for r in results:
+        d = r["df"].copy()
+        d["Experiment"] = r["summary"]["Label"]
+        all_dfs.append(d)
 
-    # =====================
-    # GRAPH: Extrapolation Days
-    # =====================
-    if extrapolation_days_data:
-        labels, values = zip(*extrapolation_days_data)
+    if all_dfs:
+        combined_df = pd.concat(all_dfs)
         plt.figure(figsize=(12, 6))
-        plt.bar(labels, values, color="green")
-        plt.xticks(rotation=45, ha="right")
-        plt.ylabel("Estimated Days to Crack")
-        plt.title("Extrapolated Time to Crack (Days)")
-        plt.yscale("log")  # חשוב – כי המספרים עצומים
+        sns.boxplot(data=combined_df, x="Experiment", y="latency_ms",
+                    showfliers=False)  # Hide extreme outliers for clarity
+        plt.xticks(rotation=45)
+        plt.title("Latency Distribution by Experiment (Lower is Better)")
         plt.tight_layout()
-        plt.savefig(os.path.join(OUT_DIR, "extrapolation_days.png"))
+        plt.savefig(f"{OUT_DIR}/latency_distribution.png")
         plt.close()
 
-    print("\n================ END OF REPORT ================\n")
-    print(f"Summary table saved to: {OUT_DIR}/summary_table.csv")
-    print(f"Graphs saved to: {OUT_DIR}/")
+    # 3. Time to Crack (Actual)
+    # Filter only successful cracks
+    cracked_df = summary_df[summary_df["Time to Crack (s)"].notnull()]
+    if not cracked_df.empty:
+        plt.figure(figsize=(10, 6))
+        sns.barplot(data=cracked_df, x="Label", y="Time to Crack (s)", palette="magma")
+        plt.xticks(rotation=45)
+        plt.title("Actual Time to Crack (Weak Passwords)")
+        plt.tight_layout()
+        plt.savefig(f"{OUT_DIR}/time_to_crack.png")
+        plt.close()
 
+
+def main():
+    print(f"[*] Analyzing logs from: {LOG_DIR}")
+
+    results = []
+
+    # Process each log file
+    for filename in os.listdir(LOG_DIR):
+        if filename.endswith(".csv"):
+            filepath = os.path.join(LOG_DIR, filename)
+            res = analyze_log_file(filepath)
+            if res:
+                results.append(res)
+
+    if not results:
+        print("[!] No CSV logs found. Run experiments first!")
+        return
+
+    # 1. Generate Summary CSV
+    summary_df = pd.DataFrame([r["summary"] for r in results])
+    summary_csv_path = f"{OUT_DIR}/final_summary_table.csv"
+    summary_df.to_csv(summary_csv_path, index=False)
+
+    print("\n--- SUMMARY TABLE ---")
+    print(summary_df[["Label", "Total Attempts", "Attempts/Sec", "Avg Latency (ms)"]].to_string(index=False))
+    print(f"\nSaved summary to {summary_csv_path}")
+
+    # 2. Perform Extrapolation
+    perform_extrapolation(results)
+
+    # 3. Generate Visualizations
+    generate_graphs(results)
+    print(f"\n[*] Graphs saved to {OUT_DIR}/ folder.")
 
 
 if __name__ == "__main__":
-    analyze_all()
+    main()
