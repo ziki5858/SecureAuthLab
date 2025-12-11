@@ -57,3 +57,16 @@ Each user entry has the following structure:
   "hash_mode": "sha256",
   "totp_secret": ""
 }
+## 👥 User Data Structure & Experiment Groups
+
+To facilitate a comparative analysis of different security mechanisms (Salt, Pepper, Algorithms), the 30 generated users are divided into 5 distinct experimental groups.
+
+| Group | Users | Category | Hash Algo | Salt | Pepper | Experiment Purpose |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **A** | `user01` - `user05` | **Weak** | SHA-256 | ❌ **No** | ❌ No | **Baseline Control:** Measuring maximum speed and vulnerability without Salt. |
+| **B** | `user06` - `user10` | **Weak** | SHA-256 | ✅ **Yes** | ❌ No | **Salt Effectiveness:** Comparing attack latency vs. Group A. |
+| **C** | `user11` - `user20` | **Medium** | bcrypt | ✅ Yes | ❌ No | **Algorithm Comparison:** Measuring the slowdown caused by bcrypt (cost=12). |
+| **D** | `user21` - `user25` | **Strong** | Argon2id | ✅ Yes | ✅ **Yes** | **Pepper Defense:** Testing the server's ability to verify using an external secret. |
+| **E** | `user26` - `user30` | **Strong** | Argon2id | ✅ Yes | ❌ No | **Pepper Control:** Ensuring standard Strong users are unaffected when Pepper is enabled. |
+
+* **TOTP:** Two-Factor Authentication is enabled for every 3rd user (e.g., `user01`, `user04`, `user22`...) across all groups.

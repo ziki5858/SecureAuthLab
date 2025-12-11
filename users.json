@@ -3,270 +3,300 @@
         "username": "user01",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "80c2eb78e76004d3ed008728cf237719",
-        "password_hash": "50f1140e341f82f52e2328403fe208cadf3564e571b8553eb0c611904ddf1691",
-        "totp_secret": "DU2O6AQYTSAIKMYSHA2ASIDAV5RUZPIF",
-        "group_seed": 6631928
+        "salt": "",
+        "password_hash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        "totp_secret": "JKHWJVMO4GXRL6WKRGDTYMOB7O7O6VBS",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user02",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "5aa87e6e0cd6bbcb820e034ba6446bde",
-        "password_hash": "30a30a02c706e5cae0d81c4a091b79949118a75260aba770164fb915a7a43f3a",
+        "salt": "",
+        "password_hash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user03",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "071589a4d532bb18e549576e683a2d6b",
-        "password_hash": "5d64ab4b88ae2535146cb4f131e1475b882652f3fdb25cbe04c1e66eb8d88b88",
+        "salt": "",
+        "password_hash": "280d44ab1e9f79b5cce2dd4f58f5fe91f0fbacdac9f7447dffc318ceb79f2d02",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user04",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "eca5b605d10916c0838a4a88ea104ed4",
-        "password_hash": "f5754374f8eeabb8e26a35b7d406f3e42f597d07374273898c180b7f4dc1c5cf",
-        "totp_secret": "HS36EE5LGMGCGC2IL5JGXJMRZV7AMSM4",
-        "group_seed": 6631928
+        "salt": "",
+        "password_hash": "6382deaf1f5dc6e792b76db4a4a7bf2ba468884e000b25e7928e621e27fb23cb",
+        "totp_secret": "Z7TFH7E5567IKD6TGYWA6TVJH4KAT6DP",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user05",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "65a3a0940f2308bb91eb1b99187fa037",
-        "password_hash": "74ddfcafbd85e7307bdc8ed79d1c356d22ba16606f62a88f8c8f65aff16e13cc",
+        "salt": "",
+        "password_hash": "428821350e9691491f616b754cd8315fb86d797ab35d843479e732ef90665324",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user06",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "c863aa06f55b33280b1ff9a12e016be6",
-        "password_hash": "6a325c40130d3de433b0b352d7a6b0c030c9bc89f3140864bf86fc8e4d0ea7cb",
+        "salt": "7ae066455a2f1372088f60167df265b7",
+        "password_hash": "a89ee4fc392e2f7a7221275d28db655ddac935cfa462d7ba375e5cea242d388d",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user07",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "4dc6a806d66698dbfc3bf74d2337359e",
-        "password_hash": "59e9fa61e67187ef29740eb607d69b57771519e430b07743e8444d1054261cd3",
-        "totp_secret": "AMZ3GE77SB5COX66LZBBK5VLYKFCSAOV",
-        "group_seed": 6631928
+        "salt": "95e8b0de42c14cd00ea30dea88d0d7a6",
+        "password_hash": "2468fad53b1d6124d92d8aa2d36c591797f62b3b312085f15cd6e8add9a03627",
+        "totp_secret": "BNDFW6N4W2DKEUXUPBK7UETLABTODTPV",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user08",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "7188c740925a560f3cb8a4d77b07cd3b",
-        "password_hash": "1e523f0da362f9d2807fcfcb2b87559e4f570d9678097dcbe3acc39f1d911513",
+        "salt": "977ed4879fcf20cb73584687c28bf45f",
+        "password_hash": "4292d63216bca6444cf6e9b1dbb7891b85c3c919e7a47c0ec96044df436a4797",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user09",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "1e907d65850d7a1f3410d2b7578c7306",
-        "password_hash": "a0e6c7e21b3bf3aed5a693c05bb0373b0e9477d2b907cf2d96024b59ef954ffc",
+        "salt": "e39a860eed1cb2f1ed82703fa1c642d6",
+        "password_hash": "bad7e070489b525ea67945ce6523091b9e0dae61d55bed2ec2cb50e6d5ab2808",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user10",
         "category": "weak",
         "hash_mode": "sha256",
-        "salt": "4f88fcb31eccac17de875e3b11d979f1",
-        "password_hash": "027e7db32aff5c3e9b5adbbf318d94e1875f2c3d6453eebabf10a72c1df58eaa",
-        "totp_secret": "JPT3ZW4ZS2GOFLCGXFMJONCZNISK43KP",
-        "group_seed": 6631928
+        "salt": "412ce25ad1e0e2341b3d461c8022af53",
+        "password_hash": "146573e006e35da4aa667921867e4808d1b85b21e7bc70fee37a5bdcab1d4d39",
+        "totp_secret": "JHBREASQI7IRZZRFRR5LIA24L3DKBLM3",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user11",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$qL77QT8v6I6BediFIAZgl.Q261wH8xdNj43dpTK3SqW.Sc/qekRM2",
+        "password_hash": "$2b$12$.yVxoUcxzAh5lUTsZlwKc.20KAjLjyzQuXNRBVXh85NLAxZ6e1ntm",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user12",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$ZTixb3jJFQXxIawfePxn3uoPP08Eb62EaTVzRGsdgTTXHN0zV/PcO",
+        "password_hash": "$2b$12$JgBwLIn4Bran7Mb6jFxZA.OWB9nzAbVmMZUpENEbyQ5JCxx0e3Xqq",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user13",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$G3YeSVxg/ur92P9ARoKR9OGaWkLDS3atBGxc86//klOBnXTT.aYyG",
-        "totp_secret": "A4NKEVXHLYJPAB5YGJCPGZJ6C7DC6CI2",
-        "group_seed": 6631928
+        "password_hash": "$2b$12$64RjhtqsTzL3CxQabDlWReoJUQ27CJf.oxTSFJFr4b1X3sH0O/DZm",
+        "totp_secret": "BWXI62LZIWOLNJEVJUM4HCU5DWXQRLYJ",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user14",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$h4YUGu9cMsOsmA3ezxntc.OTjYlT8TWo8LGKigof1tEpuyDwCEWK6",
+        "password_hash": "$2b$12$RcSkNE.KP8CRZP5oMJaoceBNDEyaeKBlYQT8i1aN./vvSl26UJ1xG",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user15",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$586GzZTOZjSXEZ6Ebxwzgu/t8Wfcu3gbAcWLZilNvSuIONbkIENtq",
+        "password_hash": "$2b$12$na2P5KJpl5faLRx.I7tmrOQDhqZmuF/JQdutOAe.9PTgpVPWM66OW",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user16",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$LSftWOcxoR0GVOZd35c7t.YmCPs3ZoGeTIT0SzOM/lBoPJhRbQko.",
-        "totp_secret": "2MNVHB5R5QJXT3EVIPZD2HKD3U6VRU7B",
-        "group_seed": 6631928
+        "password_hash": "$2b$12$Yl3p1QBnT3GXoZzyLzzZI.CjFOk24j3fv5zg22zrvsZ50EtiWFQVi",
+        "totp_secret": "ORYYFZIHNIDCBMX7PWD2CMNEMF37UYHF",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user17",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$N5pBHuJbQp8bEw8Y/SnVO.Wlr7LL.39trpFA2j7RXxHMo.oXYR5YW",
+        "password_hash": "$2b$12$WuLZh6DGvL4O9pNcid002.pSQGYB.X8ZCOWCSYy90fBt26CO2GMni",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user18",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$MkUnCfgRJlaoLMiP03qviOF9dBXU4I//LtS1KSfrXEQDgKTrt1L.y",
+        "password_hash": "$2b$12$yeXLBMl2D3qkFgoCgzVBeeUx6GFlhLwYd0IxcrNjLXO/YJllRV/W6",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user19",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$QIBhMRNeL0Q4rFL9r1QyNe0GWzq0If10/rq.WrZexF/.f1BA04XRK",
-        "totp_secret": "HRXDW5PLF42FXCTZOOE2K6ORAG555BF7",
-        "group_seed": 6631928
+        "password_hash": "$2b$12$tPWZyox4gkl7ketqWA1I0ewmqiZrxgDgPI08DrFHphaCpoUVMUX/O",
+        "totp_secret": "45VMMQDYFVQRN3VQ7MYTFJTELF5YP3TC",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user20",
         "category": "medium",
         "hash_mode": "bcrypt",
         "salt": "",
-        "password_hash": "$2b$12$AFrr9OKUQORz0d1yEE.Cq.d62MKm6g5ZHiJeBbHpFygFlssnE042S",
+        "password_hash": "$2b$12$przYgOqkGD.SV.7bN3lKBu3XnxckGdTaeyG1vQvKIorjpX0KdBfbK",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user21",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$NTuZSCDeAveWiWLf6NOhuw$R6Jqc7KCf+8sOXMnz+S/Syaauu8XBEzwIbfYSEoen54",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$SpfOBcDvQYr8JMAcS0WWhw$rTG61XFe6Su4acTdC3HKn3QLW2DtSi7AziT9PfHUFoY",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": true
     },
     {
         "username": "user22",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$Qx3V8iOEbdht4HpqzKmxpg$dcxOQlzviTB4pW7cpMnlP82qwUDsWPnAUxUxXtYVhvE",
-        "totp_secret": "N3RCETMI6YRECGLJTDABCQBQHPLNNMUT",
-        "group_seed": 6631928
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$iwU5m7gKgsXtrv6gkBM8Xw$NsMjUZzxnjh1ZCv7Jg9qAyCbcMb+/Ud6iDjpUza5DxQ",
+        "totp_secret": "RWQF2HJJYGUR5QTV6JPNNTSIZNOHSV6P",
+        "group_seed": 6631928,
+        "used_pepper": true
     },
     {
         "username": "user23",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$5GY3siUu8YUrn0FJvJTt5w$FDIVtlarI/X6sIu2+D+PoQbx8Rug4aOR/0mnq7vCz24",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$ity3lP96XomsXHhYIf4yZg$BYTLpArdH4X5LWfMY9sO16IVFSjLIgfB//X4mht/bzg",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": true
     },
     {
         "username": "user24",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$uUnfejbmmc0FLvk/S97ITw$2uE404XwXU3zl4msTevD04Q2NOykrnjYSUUd2symUEQ",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$Z46SmpFm4M2LSljGr5c1VQ$Rfu79Rc6CNhZ4QekS1bGsSU5AuoAcYX9DuvnjvM8JYc",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": true
     },
     {
         "username": "user25",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$oajt+w4ToNdxtFHmj/naSg$KjRZ1kXvH1IWdBqmAGhF75rjMU+YDLz2qYDwe9lgHMY",
-        "totp_secret": "G5RSO2WFWNPBNONMAKE3NODXZOAPFZX4",
-        "group_seed": 6631928
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$WXq2dH6eW7XOqOYRAPrKYQ$WBfG6Qz4lOTqU1k99yrfypDPG5yn0VTUYbfDaptoM/8",
+        "totp_secret": "B5Q4C4SQT2BGJ3T622CP4CTTZ62OKHT6",
+        "group_seed": 6631928,
+        "used_pepper": true
     },
     {
         "username": "user26",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$azIquFAAZNdEJpCyTehS6w$Vjyh97FkI4I7yRJb4HZKAufUmmhFJgnbO3gy8/7guF0",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$SwaMZnV4pqSQoffdv6OS7g$m5h4GOgqUrsffSRRfx2EK7SwT15liYuDYrFbJBUU8zo",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user27",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$s4+vM73g6zAOTENQWrVGVw$0htSbNzNWClUr5hiEY66e7p+k2RtyBADMhXSEaqTQzE",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$LsDDJkXuTiB7lXrRb+nCiw$XWj6j2/6cz5Hdh88lawyixsTsKteAAPdGwWqYs/y+Ho",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user28",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$n9s3VtppJad/B5OOs6wfIQ$FSmO+OrYh/pVz3FdhDTYIox8yAXlfgLyl/WC4OWC4Ms",
-        "totp_secret": "YC2GYB4F4RQSVBSGIM4KPY74XSP6RI5J",
-        "group_seed": 6631928
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$rPBDFuGYRMRtVRUUyR3u5w$aBBCIohInUNRk7bVJYP7gM43pmFPf5Re7C4h84/YKec",
+        "totp_secret": "A2ACCA3HW4TVNAIKBTMUEQPSE6PQ272Z",
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user29",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$f5of7BpFRwZYsCCCfZ7XqA$Ft4wSXDb62waMK/CIiQTcEpo79J77wCHllXwQbaUqp0",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$UZsBH7KX4zs9WebbpvHecQ$17mbqYxAtDFu41suW/Wx7mFpbXlm4WBJe7JqjQcW2kQ",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     },
     {
         "username": "user30",
         "category": "strong",
         "hash_mode": "argon2id",
         "salt": "",
-        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$oPLN4/08EO9vIDRaXsZwOA$j7t1CDlXFzrUI5QodfaDWSUzw17BHUS7GORZL0j7pVc",
+        "password_hash": "$argon2id$v=19$m=65536,t=1,p=1$p24XHuAIpzo/7BL9Xw+pFQ$yWd8VOLU0c2p4b7VxdEavnK/ZHWUxfhGgPkHUXhJ3hQ",
         "totp_secret": "",
-        "group_seed": 6631928
+        "group_seed": 6631928,
+        "used_pepper": false
     }
 ]
