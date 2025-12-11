@@ -1,0 +1,47 @@
+[
+    {
+        "group": "A",
+        "BF_user": "user01",
+        "BF_category": "weak",
+        "BF_log": "logs\\bruteforce/BF_user01_groupA.csv",
+        "SP_user": "user03",
+        "SP_category": "weak",
+        "SP_log": "logs\\spraying/SP_user03_groupA.csv"
+    },
+    {
+        "group": "B",
+        "BF_user": "user06",
+        "BF_category": "weak",
+        "BF_log": "logs\\bruteforce/BF_user06_groupB.csv",
+        "SP_user": "user08",
+        "SP_category": "weak",
+        "SP_log": "logs\\spraying/SP_user08_groupB.csv"
+    },
+    {
+        "group": "C",
+        "BF_user": "user11",
+        "BF_category": "medium",
+        "BF_log": "logs\\bruteforce/BF_user11_groupC.csv",
+        "SP_user": "user14",
+        "SP_category": "medium",
+        "SP_log": "logs\\spraying/SP_user14_groupC.csv"
+    },
+    {
+        "group": "D",
+        "BF_user": "user21",
+        "BF_category": "strong",
+        "BF_log": "logs\\bruteforce/BF_user21_groupD.csv",
+        "SP_user": "user23",
+        "SP_category": "strong",
+        "SP_log": "logs\\spraying/SP_user23_groupD.csv"
+    },
+    {
+        "group": "E",
+        "BF_user": "user26",
+        "BF_category": "strong",
+        "BF_log": "logs\\bruteforce/BF_user26_groupE.csv",
+        "SP_user": "user29",
+        "SP_category": "strong",
+        "SP_log": "logs\\spraying/SP_user29_groupE.csv"
+    }
+]

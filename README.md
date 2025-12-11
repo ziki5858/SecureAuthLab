@@ -57,16 +57,20 @@ Each user entry has the following structure:
   "hash_mode": "sha256",
   "totp_secret": ""
 }
-## 👥 User Data Structure & Experiment Groups
+## 👥 User Groups & Security Configuration Matrix
 
-To facilitate a comparative analysis of different security mechanisms (Salt, Pepper, Algorithms), the 30 generated users are divided into 5 distinct experimental groups.
+The 30 generated users are divided into **5 experimental groups**, each designed to test a specific security mechanism.
 
-| Group | Users | Category | Hash Algo | Salt | Pepper | Experiment Purpose |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **A** | `user01` - `user05` | **Weak** | SHA-256 | ❌ **No** | ❌ No | **Baseline Control:** Measuring maximum speed and vulnerability without Salt. |
-| **B** | `user06` - `user10` | **Weak** | SHA-256 | ✅ **Yes** | ❌ No | **Salt Effectiveness:** Comparing attack latency vs. Group A. |
-| **C** | `user11` - `user20` | **Medium** | bcrypt | ✅ Yes | ❌ No | **Algorithm Comparison:** Measuring the slowdown caused by bcrypt (cost=12). |
-| **D** | `user21` - `user25` | **Strong** | Argon2id | ✅ Yes | ✅ **Yes** | **Pepper Defense:** Testing the server's ability to verify using an external secret. |
-| **E** | `user26` - `user30` | **Strong** | Argon2id | ✅ Yes | ❌ No | **Pepper Control:** Ensuring standard Strong users are unaffected when Pepper is enabled. |
+| Group | Users | Category | Hash Algorithm | Salt | Pepper | Purpose |
+|------|--------|-----------|----------------|:----:|:------:|---------|
+| **A** | `user01`–`user05` | 🟠 Weak | SHA-256 | ❌ | ❌ | **Baseline Control** — No Salt, no Pepper. Measures raw cracking speed & vulnerability. |
+| **B** | `user06`–`user10` | 🟠 Weak | SHA-256 | ✅ | ❌ | **Salt Effectiveness** — Compare attack difficulty & latency vs. Group A. |
+| **C** | `user11`–`user20` | 🔵 Medium | bcrypt (cost=12) | ✅ | ❌ | **Algorithm Comparison** — Evaluate slowdown caused by bcrypt vs. SHA-256. |
+| **D** | `user21`–`user25` | 🟣 Strong | Argon2id (t=1, m=64MB, p=1) | ✅ | ✅ | **Pepper Defense** — Strong hashing + external secret; measure verification impact. |
+| **E** | `user26`–`user30` | 🟣 Strong | Argon2id | ✅ | ❌ | **Pepper Control Group** — Ensures Argon2id runs normally when Pepper is disabled. |
 
-* **TOTP:** Two-Factor Authentication is enabled for every 3rd user (e.g., `user01`, `user04`, `user22`...) across all groups.
+### ⭐ Notes
+- **Salt** → Unique per-user salt stored in `users.json`.  
+- **Pepper** → Global secret stored *only on the server*, never in the database.  
+- **TOTP (2FA)** → Enabled for **every 3rd user** (e.g., `user01`, `user04`, `user07`, …).  
+- Groups are structured to isolate the effect of each specific protection mechanism.
