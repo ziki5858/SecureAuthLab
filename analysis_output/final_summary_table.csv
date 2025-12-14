@@ -1,0 +1,11 @@
+Label,Total Attempts,Duration (s),Attempts/Sec,Avg Latency (ms),Median Latency (ms),90% Latency (ms),Time to Crack (s)
+BruteForce (groupA),2000,7.21,277.34,3.53,3.37,5.0,
+BruteForce (groupB),2000,7.57,264.04,3.72,3.53,5.02,
+BruteForce (groupC),2000,447.47,4.47,223.78,222.54,228.76,
+BruteForce (groupD),2000,107.69,18.57,53.79,52.66,58.2,
+BruteForce (groupE),2000,105.85,18.9,52.86,52.14,56.03,
+Spraying (groupA),1500,166.63,9.0,111.01,68.74,257.03,3.35
+Spraying (groupB),1500,182.88,8.2,121.85,73.1,285.12,3.33
+Spraying (groupC),1500,140.86,10.65,93.84,52.33,225.11,2.8
+Spraying (groupD),1500,144.08,10.41,95.99,52.79,227.13,2.85
+Spraying (groupE),1500,143.46,10.46,95.57,52.73,224.27,2.78
