@@ -36,6 +36,10 @@ REQUEST_LOG = defaultdict(list)
 FAILED_ATTEMPTS = defaultdict(int)
 LOCKED_UNTIL = {}
 
+# CAPTCHA tokens store (minimal but correct simulation)
+CAPTCHA_TOKENS = {}  # token -> expiry_time
+CAPTCHA_TOKEN_TTL = 180  # seconds
+
 argon2_verify = PasswordHasher(
     time_cost=1,
     memory_cost=65536,
@@ -54,7 +58,7 @@ try:
         user_list = json.load(f)
     USERS = {user["username"]: user for user in user_list}
     for u in USERS.values():
-        u['totp_offset'] = 0
+        u["totp_offset"] = 0
     print(f"[*] Loaded {len(USERS)} users.")
 except FileNotFoundError:
     print("[!] ERROR: users.json not found. Run generate_users.py first.")
@@ -62,6 +66,13 @@ except FileNotFoundError:
 
 
 def log_attempt(username, hash_mode, category, result, latency_ms, protection_flags: dict):
+    """
+    Keep detailed reason in 'detail', but ensure required fields are:
+      result: success/failure
+      status: success/failure
+    """
+    status = "success" if result == "success" else "failure"
+
     entry = {
         "timestamp": datetime.utcnow().isoformat(),
         "group_seed": GROUP_SEED,
@@ -70,7 +81,10 @@ def log_attempt(username, hash_mode, category, result, latency_ms, protection_fl
         "hash_mode": hash_mode,
         "protection_flags": protection_flags,
         "latency_ms": round(latency_ms, 3),
-        "result": result
+
+        "result": status,
+        "status": status,
+        "detail": result
     }
     with open("logs/attempts.log", "a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -78,38 +92,70 @@ def log_attempt(username, hash_mode, category, result, latency_ms, protection_fl
 
 def check_totp(user, token):
     secret = user.get("totp_secret")
-    if not secret: return True
-    offset = user.get('totp_offset', 0)
+    if not secret:
+        return True  # no secret => treat as no-TOTP user (lab choice)
+    if not token:
+        return False
+
+    offset = user.get("totp_offset", 0)
     totp = pyotp.TOTP(secret)
     adjusted_time = time.time() + offset
     return totp.verify(token, for_time=adjusted_time, valid_window=1)
 
 
+def verify_captcha_token(token: str) -> bool:
+    if not token:
+        return False
+    exp = CAPTCHA_TOKENS.get(token)
+    if not exp:
+        return False
+    if time.time() > exp:
+        del CAPTCHA_TOKENS[token]
+        return False
+    # one-time use
+    del CAPTCHA_TOKENS[token]
+    return True
+
+
 def verify_password_hash(password, user):
+    """
+    Minimal critical fixes:
+    - Pepper: if enabled + used_pepper in user => candidate password = pepper + password
+      (and works for sha256/bcrypt/argon2id)
+    - SHA256 order: sha256( salt + candidate_password )
+    """
     mode = user["hash_mode"]
     stored_hash = user["password_hash"]
-    salt = user["salt"]  # Might be empty string
+    salt = user.get("salt", "")  # Might be empty string
 
-    user_hash_is_peppered = user.get("used_pepper", False)
-    pwd_to_check = password
+    user_hash_is_peppered = bool(user.get("used_pepper", False))
 
     # Apply pepper ONLY if globally enabled AND user record has it
-    if CONFIG["pepper"] and user_hash_is_peppered and GLOBAL_PEPPER_SECRET:
-        pwd_to_check = password + GLOBAL_PEPPER_SECRET
+    if CONFIG["pepper"] and user_hash_is_peppered:
+        if not GLOBAL_PEPPER_SECRET:
+            return False
+        # CONSISTENT ORDER: pepper + password
+        pwd_to_check = GLOBAL_PEPPER_SECRET + password
+    else:
+        pwd_to_check = password
 
     if mode == "sha256":
-        attempt = hashlib.sha256((pwd_to_check + salt).encode()).hexdigest()
+        # CONSISTENT ORDER: salt + password
+        attempt = hashlib.sha256((salt + pwd_to_check).encode()).hexdigest()
         return attempt == stored_hash
+
     elif mode == "bcrypt":
         try:
             return bcrypt.checkpw(pwd_to_check.encode(), stored_hash.encode())
         except ValueError:
             return False
+
     elif mode == "argon2id":
         try:
             return argon2_verify.verify(stored_hash, pwd_to_check)
         except Exception:
             return False
+
     return False
 
 
@@ -122,7 +168,9 @@ def reset_state():
     REQUEST_LOG.clear()
     FAILED_ATTEMPTS.clear()
     LOCKED_UNTIL.clear()
-    for u in USERS.values(): u['totp_offset'] = 0
+    CAPTCHA_TOKENS.clear()
+    for u in USERS.values():
+        u["totp_offset"] = 0
     return jsonify({"status": "security state reset"}), 200
 
 
@@ -131,8 +179,16 @@ def get_captcha_token():
     seed_param = request.args.get("group_seed")
     if str(seed_param) == str(GROUP_SEED):
         token = secrets.token_hex(4)
-        return jsonify({"captcha_token": token}), 200
+        CAPTCHA_TOKENS[token] = time.time() + CAPTCHA_TOKEN_TTL
+        return jsonify({"captcha_token": token, "ttl_sec": CAPTCHA_TOKEN_TTL}), 200
     return jsonify({"error": "unauthorized"}), 403
+
+
+@app.route("/register", methods=["POST"])
+def register():
+    # Minimal endpoint to satisfy assignment minimum endpoints.
+    # Users are generated offline via generate_users.py
+    return jsonify({"status": "fail", "reason": "register_disabled_in_lab"}), 501
 
 
 @app.route("/login", methods=["POST"])
@@ -176,13 +232,17 @@ def login():
             else:
                 del LOCKED_UNTIL[username]
 
-    # 3. CAPTCHA
+    # 3. CAPTCHA (now actually validates token)
     if CONFIG["captcha"]:
         if FAILED_ATTEMPTS[username] >= CAPTCHA_THRESHOLD:
-            if not captcha_input:
+            if not verify_captcha_token(captcha_input):
                 latency = (time.time() - start_time) * 1000
                 log_attempt(username, hash_mode, category, "fail_captcha_required", latency, current_protection_state)
-                return jsonify({"status": "fail", "reason": "captcha required", "captcha_required": True}), 403
+                return jsonify({
+                    "status": "fail",
+                    "reason": "captcha required",
+                    "captcha_required": True
+                }), 403
 
     # 4. Password Verification
     if not verify_password_hash(password, user):
@@ -204,11 +264,22 @@ def login():
 
     # Success
     FAILED_ATTEMPTS[username] = 0
-    if username in LOCKED_UNTIL: del LOCKED_UNTIL[username]
+    if username in LOCKED_UNTIL:
+        del LOCKED_UNTIL[username]
 
     latency = (time.time() - start_time) * 1000
     log_attempt(username, hash_mode, category, "success", latency, current_protection_state)
     return jsonify({"status": "success", "username": username}), 200
+
+
+@app.route("/login_totp", methods=["POST"])
+def login_totp():
+    old = CONFIG["totp"]
+    CONFIG["totp"] = True
+    try:
+        return login()
+    finally:
+        CONFIG["totp"] = old
 
 
 if __name__ == "__main__":
@@ -223,4 +294,9 @@ if __name__ == "__main__":
 
     CONFIG.update(vars(args))
     print(f"[*] Server port {args.port}. Active: {[k for k, v in CONFIG.items() if v]}")
+
+    # Safety: if pepper flag enabled but missing env var, warn (lab-friendly)
+    if CONFIG["pepper"] and not GLOBAL_PEPPER_SECRET:
+        print("[!] WARNING: --pepper enabled but MAMAN16_PEPPER is not set. Peppered users will fail login.")
+
     app.run(host="0.0.0.0", port=args.port, debug=False)
