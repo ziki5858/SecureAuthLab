@@ -1,209 +1,214 @@
 import os
+import json
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import math
 
-# =========================================
-# CONFIGURATION
-# =========================================
 LOG_DIR = "logs"
 OUT_DIR = "analysis_output"
+USERS_JSON = "users.json"  # optional
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# Keyspace definitions based on generate_users.py
-# Format: Base (charset size) ** Length
+# --- keyspace assumptions (match your generator) ---
 KEYSPACES = {
-    "weak": {"base": 36, "min_len": 4, "max_len": 6},  # a-z, 0-9
-    "medium": {"base": 62, "min_len": 7, "max_len": 10},  # a-z, A-Z, 0-9
-    "strong": {"base": 70, "min_len": 11, "max_len": 16}  # alphanumeric + symbols
+    "weak":   {"base": 36, "min_len": 4,  "max_len": 6},
+    "medium": {"base": 62, "min_len": 7,  "max_len": 10},
+    "strong": {"base": 70, "min_len": 11, "max_len": 16},
 }
 
+def keyspace_size(cat: str) -> int:
+    cfg = KEYSPACES.get(cat, KEYSPACES["strong"])
+    total = 0
+    for L in range(cfg["min_len"], cfg["max_len"] + 1):
+        total += cfg["base"] ** L
+    return total
 
-def calculate_keyspace_size(category):
-    """Calculates total combinations for the category's length range."""
-    cfg = KEYSPACES.get(category, KEYSPACES["strong"])
-    total_combinations = 0
-    for length in range(cfg["min_len"], cfg["max_len"] + 1):
-        total_combinations += cfg["base"] ** length
-    return total_combinations
+def load_users_categories(path: str) -> dict:
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    m = {}
+    if isinstance(data, list):
+        for u in data:
+            if isinstance(u, dict) and "username" in u:
+                m[str(u["username"])] = u.get("category")
+    elif isinstance(data, dict):
+        # maybe {username: {...}}
+        for username, obj in data.items():
+            if isinstance(obj, dict):
+                m[str(username)] = obj.get("category")
+    return m
 
+def normalize_success(v) -> bool:
+    s = str(v).strip().lower()
+    return s in ("success", "ok", "true", "1", "yes")
 
-def parse_filename(filename):
-    """Extracts metadata from filename (e.g., 'bruteforce_user01_baseline.csv')"""
-    parts = filename.replace(".csv", "").split("_")
-    # Simple heuristic to get a readable label
-    if "bruteforce" in filename:
-        return f"BruteForce ({parts[-1]})"
-    elif "spraying" in filename:
-        return f"Spraying ({parts[-1]})"
-    return filename
+def normalize_flags(v) -> dict:
+    keys = ["rate_limit", "lockout", "captcha", "totp", "pepper"]
+    out = {k: 0 for k in keys}
 
+    if v is None:
+        return out
 
-def analyze_log_file(filepath):
-    """Reads a CSV log and returns a summary dictionary."""
-    try:
-        df = pd.read_csv(filepath)
-    except Exception as e:
-        print(f"[!] Could not read {filepath}: {e}")
-        return None
+    if isinstance(v, dict):
+        for k in keys:
+            out[k] = 1 if bool(v.get(k, False)) else 0
+        return out
 
-    if df.empty:
-        return None
+    if isinstance(v, list):
+        s = set(map(str, v))
+        for k in keys:
+            out[k] = 1 if k in s else 0
+        return out
 
-    # Convert timestamps
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    # string like "rate_limit=1,totp=0"
+    txt = str(v)
+    parts = [p.strip() for p in txt.replace(";", ",").split(",") if p.strip()]
+    for p in parts:
+        if "=" in p:
+            k, vv = p.split("=", 1)
+            k = k.strip()
+            vv = vv.strip().lower()
+            if k in out:
+                out[k] = 1 if vv in ("1", "true", "yes", "on") else 0
+        else:
+            if p in out:
+                out[p] = 1
+    return out
 
-    # 1. Duration & Speed
-    start_time = df['timestamp'].min()
-    end_time = df['timestamp'].max()
-    duration_sec = (end_time - start_time).total_seconds()
-    if duration_sec < 1: duration_sec = 1  # Avoid div/0
+def flags_to_str(d: dict) -> str:
+    keys = ["rate_limit", "lockout", "captcha", "totp", "pepper"]
+    return ",".join(f"{k}={int(d.get(k, 0))}" for k in keys)
 
-    total_attempts = len(df)
-    attempts_per_sec = total_attempts / duration_sec
+def read_attempts_jsonl(path: str) -> pd.DataFrame:
+    rows = []
+    bad = 0
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except Exception:
+                bad += 1
+    if bad:
+        print(f"[!] Skipped {bad} bad JSON lines in {path}")
+    return pd.DataFrame(rows)
 
-    # 2. Latency Stats (Assignment Requirement: Mean, Median, 90th Percentile)
-    latency_mean = df['latency_ms'].mean()
-    latency_median = df['latency_ms'].median()
-    latency_p90 = df['latency_ms'].quantile(0.9)
+def read_all_csv_logs(dir_path: str) -> pd.DataFrame:
+    frames = []
+    for fn in os.listdir(dir_path):
+        if fn.lower().endswith(".csv"):
+            frames.append(pd.read_csv(os.path.join(dir_path, fn)))
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-    # 3. Success Analysis
-    success_rows = df[df['status'] == 'success']
-    time_to_crack = None
-    if not success_rows.empty:
-        first_success = success_rows.iloc[0]['timestamp']
-        time_to_crack = (first_success - start_time).total_seconds()
+# --- load logs (prefer attempts.log if exists) ---
+attempts_log_path = os.path.join(LOG_DIR, "attempts.log")
+if os.path.exists(attempts_log_path):
+    df = read_attempts_jsonl(attempts_log_path)
+else:
+    df = read_all_csv_logs(LOG_DIR)
 
-    return {
-        "df": df,  # Keep raw data for plotting
-        "summary": {
-            "Label": parse_filename(os.path.basename(filepath)),
-            "Total Attempts": total_attempts,
-            "Duration (s)": round(duration_sec, 2),
-            "Attempts/Sec": round(attempts_per_sec, 2),
-            "Avg Latency (ms)": round(latency_mean, 2),
-            "Median Latency (ms)": round(latency_median, 2),
-            "90% Latency (ms)": round(latency_p90, 2),
-            "Time to Crack (s)": round(time_to_crack, 2) if time_to_crack else None
-        }
-    }
+if df.empty:
+    print("[!] No logs found (attempts.log or CSVs).")
+    raise SystemExit(1)
 
+# --- standardize columns ---
+# handle older CSV schema
+if "result" not in df.columns and "status" in df.columns:
+    df["result"] = df["status"]
 
-def perform_extrapolation(summary_list):
-    """Calculates estimated time to crack for strong passwords based on observed speed."""
-    extrapolations = []
+if "latency_ms" not in df.columns:
+    for alt in ["latency", "ms_latency", "latencyMs"]:
+        if alt in df.columns:
+            df["latency_ms"] = df[alt]
+            break
 
-    print("\n--- EXTRAPOLATION ANALYSIS ---")
+for col in ["timestamp", "username", "hash_mode", "protection_flags", "result", "latency_ms"]:
+    if col not in df.columns:
+        df[col] = None
 
-    for item in summary_list:
-        stats = item["summary"]
-        aps = stats["Attempts/Sec"]
-        label = stats["Label"]
+# parse timestamps
+df["ts"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+df = df[df["ts"].notna()].copy()
 
-        # Only meaningful to extrapolate for Brute Force
-        if "BruteForce" in label and aps > 0:
-            # Calculate for Strong Category
-            keyspace = calculate_keyspace_size("strong")
-            seconds_to_crack = keyspace / aps
+# success + latency
+df["success"] = df["result"].apply(normalize_success)
+df["latency_ms"] = pd.to_numeric(df["latency_ms"], errors="coerce")
 
-            # Convert to readable units
-            days = seconds_to_crack / (24 * 3600)
-            years = days / 365
+# category (from users.json if missing)
+users_cat = load_users_categories(USERS_JSON)
+if "category" not in df.columns or df["category"].isna().all():
+    df["category"] = df["username"].astype(str).map(users_cat)
 
-            extrapolations.append({
-                "Label": label,
-                "Estimated Years (Strong)": years,
-                "Keyspace": keyspace
-            })
+# normalize protection flags to stable string
+df["flags_norm"] = df["protection_flags"].apply(normalize_flags)
+df["protection_toggles"] = df["flags_norm"].apply(flags_to_str)
 
-            print(f"[{label}] Speed: {aps} att/sec")
-            print(f"   -> Estimated time to crack STRONG password: {years:,.0f} years")
+# --- REQUIRED SUMMARY: per (hash_mode, protection_toggles) ---
+rows = []
+for (hm, tog), g in df.groupby(["hash_mode", "protection_toggles"]):
+    g = g.sort_values("ts")
+    start = g["ts"].min()
+    end = g["ts"].max()
+    dur = (end - start).total_seconds()
+    if dur <= 0:
+        dur = 1.0
 
-    return pd.DataFrame(extrapolations)
+    total = len(g)
+    aps = total / dur
 
+    t_first = None
+    if g["success"].any():
+        first = g.loc[g["success"], "ts"].min()
+        t_first = (first - start).total_seconds()
 
-def generate_graphs(results):
-    """Generates the required plots."""
-    summary_df = pd.DataFrame([r["summary"] for r in results])
+    # success rate by category (if category exists)
+    rates = {}
+    gg = g.dropna(subset=["category"])
+    if not gg.empty:
+        rates = gg.groupby("category")["success"].mean().to_dict()
 
-    # Set style
-    sns.set_theme(style="whitegrid")
+    rows.append({
+        "hash_mode": hm,
+        "protection_toggles": tog,
+        "total_attempts": int(total),
+        "attempts_per_second": round(aps, 2),
+        "time_to_first_success": round(t_first, 2) if t_first is not None else None,
+        "avg_latency_ms": round(g["latency_ms"].mean(), 2) if g["latency_ms"].notna().any() else None,
+        "success_rate_by_category": json.dumps({k: float(v) for k, v in rates.items()}, ensure_ascii=False)
+    })
 
-    # 1. Attempts Per Second Comparison
-    plt.figure(figsize=(10, 6))
-    sns.barplot(data=summary_df, x="Label", y="Attempts/Sec", palette="viridis")
-    plt.xticks(rotation=45)
-    plt.title("Attack Speed Comparison (Attempts/Sec)")
-    plt.tight_layout()
-    plt.savefig(f"{OUT_DIR}/attempts_per_sec.png")
-    plt.close()
+summary_df = pd.DataFrame(rows).sort_values(["hash_mode", "protection_toggles"])
+summary_path = os.path.join(OUT_DIR, "required_summary_table.csv")
+summary_df.to_csv(summary_path, index=False, encoding="utf-8")
+print(f"[*] Wrote: {summary_path}")
 
-    # 2. Latency Distribution (Box Plot)
-    # Combine all raw dataframes
-    all_dfs = []
-    for r in results:
-        d = r["df"].copy()
-        d["Experiment"] = r["summary"]["Label"]
-        all_dfs.append(d)
+# --- EXTRAPOLATION (based on measured attempts/sec) ---
+extra_rows = []
+for _, r in summary_df.iterrows():
+    aps = r["attempts_per_second"]
+    if aps is None or aps <= 0:
+        continue
+    for cat in ["weak", "medium", "strong"]:
+        ks = keyspace_size(cat)
+        worst = ks / aps
+        avg = 0.5 * ks / aps  # expected average tries
+        extra_rows.append({
+            "hash_mode": r["hash_mode"],
+            "protection_toggles": r["protection_toggles"],
+            "category": cat,
+            "keyspace": ks,
+            "measured_attempts_per_second": aps,
+            "worst_case_years": worst / (3600 * 24 * 365),
+            "expected_average_years": avg / (3600 * 24 * 365),
+        })
 
-    if all_dfs:
-        combined_df = pd.concat(all_dfs)
-        plt.figure(figsize=(12, 6))
-        sns.boxplot(data=combined_df, x="Experiment", y="latency_ms",
-                    showfliers=False)  # Hide extreme outliers for clarity
-        plt.xticks(rotation=45)
-        plt.title("Latency Distribution by Experiment (Lower is Better)")
-        plt.tight_layout()
-        plt.savefig(f"{OUT_DIR}/latency_distribution.png")
-        plt.close()
+extra_df = pd.DataFrame(extra_rows)
+extra_path = os.path.join(OUT_DIR, "extrapolation.csv")
+extra_df.to_csv(extra_path, index=False, encoding="utf-8")
+print(f"[*] Wrote: {extra_path}")
 
-    # 3. Time to Crack (Actual)
-    # Filter only successful cracks
-    cracked_df = summary_df[summary_df["Time to Crack (s)"].notnull()]
-    if not cracked_df.empty:
-        plt.figure(figsize=(10, 6))
-        sns.barplot(data=cracked_df, x="Label", y="Time to Crack (s)", palette="magma")
-        plt.xticks(rotation=45)
-        plt.title("Actual Time to Crack (Weak Passwords)")
-        plt.tight_layout()
-        plt.savefig(f"{OUT_DIR}/time_to_crack.png")
-        plt.close()
-
-
-def main():
-    print(f"[*] Analyzing logs from: {LOG_DIR}")
-
-    results = []
-
-    # Process each log file
-    for filename in os.listdir(LOG_DIR):
-        if filename.endswith(".csv"):
-            filepath = os.path.join(LOG_DIR, filename)
-            res = analyze_log_file(filepath)
-            if res:
-                results.append(res)
-
-    if not results:
-        print("[!] No CSV logs found. Run experiments first!")
-        return
-
-    # 1. Generate Summary CSV
-    summary_df = pd.DataFrame([r["summary"] for r in results])
-    summary_csv_path = f"{OUT_DIR}/final_summary_table.csv"
-    summary_df.to_csv(summary_csv_path, index=False)
-
-    print("\n--- SUMMARY TABLE ---")
-    print(summary_df[["Label", "Total Attempts", "Attempts/Sec", "Avg Latency (ms)"]].to_string(index=False))
-    print(f"\nSaved summary to {summary_csv_path}")
-
-    # 2. Perform Extrapolation
-    perform_extrapolation(results)
-
-    # 3. Generate Visualizations
-    generate_graphs(results)
-    print(f"\n[*] Graphs saved to {OUT_DIR}/ folder.")
-
-
-if __name__ == "__main__":
-    main()
+# --- quick preview ---
+print("\n--- PREVIEW (first 15 rows) ---")
+print(summary_df.head(15).to_string(index=False))

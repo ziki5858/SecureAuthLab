@@ -1,0 +1,9 @@
+hash_mode,protection_toggles,total_attempts,attempts_per_second,time_to_first_success,avg_latency_ms,success_rate_by_category
+argon2id,"rate_limit=1,lockout=1,captcha=1,totp=0,pepper=0",3012,25.39,,0.85,"{""strong"": 0.0}"
+argon2id,"rate_limit=1,lockout=1,captcha=1,totp=0,pepper=1",2759,23.05,,0.67,"{""strong"": 0.0}"
+argon2id,"rate_limit=1,lockout=1,captcha=1,totp=1,pepper=0",253,2.14,,2.05,"{""strong"": 0.0}"
+argon2id,"rate_limit=1,lockout=1,captcha=1,totp=1,pepper=1",506,4.23,,2.06,"{""strong"": 0.0}"
+bcrypt,"rate_limit=1,lockout=1,captcha=1,totp=0,pepper=0",3771,30.5,,3.59,"{""medium"": 0.0}"
+bcrypt,"rate_limit=1,lockout=1,captcha=1,totp=1,pepper=0",759,6.17,,7.61,"{""medium"": 0.0}"
+sha256,"rate_limit=1,lockout=1,captcha=1,totp=0,pepper=0",3522,28.41,6.17,0.11,"{""weak"": 0.0005678591709256105}"
+sha256,"rate_limit=1,lockout=1,captcha=1,totp=1,pepper=0",3017,21.64,,0.14,"{""weak"": 0.0}"
