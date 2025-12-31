@@ -18,7 +18,6 @@ import secrets
 GROUP_SEED = 6631928
 GLOBAL_PEPPER_SECRET = os.getenv("MAMAN16_PEPPER")
 
-# Only toggles live here (NO port)
 CONFIG = {
     "rate_limit": False,
     "lockout": False,
