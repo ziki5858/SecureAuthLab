@@ -9,9 +9,9 @@ GitHub repository: https://github.com/ziki5858/SecureAuthLab
 ### GROUP_SEED
 Computed as XOR between the two IDs:
 
-`211838172 ^ 207745316 = 6631928`
+str(`211838172 ^ 207745316) = 12686840`
 
-**GROUP_SEED = 6631928**
+**GROUP_SEED = 12686840**
 
 ---
 
@@ -22,21 +22,20 @@ We measure attack performance and success across different hashing algorithms an
 ---
 
 ## Password Strength Categories
-
 ### Weak
-- **Length:** 4–6  
+- **Length:** 4–6  (lowercase + digits = 36)
 - **Charset:** lowercase letters + digits (`a–z`, `0–9`)  
 - **No special characters**  
 - **Hashing:** SHA-256 (with optional per-user salt, depending on group)
 
 ### Medium
-- **Length:** 7–10  
+- **Length:** 7–10  (mixed case + digits = 62)
 - **Charset:** lowercase + uppercase + digits (`a–z`, `A–Z`, `0–9`)  
 - **No special characters**  
 - **Hashing:** bcrypt (**cost = 12**)
 
 ### Strong
-- **Length:** 11–16  
+- **Length:** 11–16  (mixed case + digits + symbols = ~94)
 - **Charset:** lowercase + uppercase + digits + special characters (`!@#$%^&*`, etc.)  
 - **Hashing:** Argon2id (**t = 1, m = 64MB, p = 1**)
 
@@ -47,41 +46,29 @@ We measure attack performance and success across different hashing algorithms an
 - 10 weak users
 - 10 medium users
 - 10 strong users
+- 5 common users (common pwd)
+- group_seed user(pwd = group_seed)
 
-Each user record has the following structure:
-
+we created a clean users set base with the  following structure:
+{
+        "username": "weak_1",
+        "password": "alewsp",
+        "category": "weak"
+    }
+Each hash/defence has the following structure (different json file then the base.):
 ```json
 {
-  "username": "user01",
-  "category": "weak",
-  "salt": "random_hex_string_or_empty",
-  "password_hash": "hashed_password_value",
-  "hash_mode": "sha256",
-  "totp_secret": "",
-  "group_seed": 6631928,
-  "used_pepper": false
-}
+        "username": "weak_1",
+        "password": "87a65adbe7f737f3fae081897a12faaac07aa7a6c7b64d541196acb99ae55535",
+        "category": "weak",
+        "salt": "2c07811c982f0fd03b019217e93ff3d26641bde88904abf96071b149992f3e35",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    }
+
 ```
-
----
-
-## Experimental Groups and Security Matrix
-The 30 users are divided into 5 groups to isolate security mechanisms.
-
-| Group | Users | Category | Hash Algorithm | Salt | Pepper | Purpose |
-|------:|-------|----------|----------------|:----:|:------:|---------|
-| **A** | `user01`–`user05` | Weak | SHA-256 | ❌ | ❌ | **Baseline** — no salt and no pepper. Measures raw online attack speed. |
-| **B** | `user06`–`user10` | Weak | SHA-256 | ✅ | ❌ | **Salt effect** — compare against Group A under identical attack conditions. |
-| **C** | `user11`–`user20` | Medium | bcrypt (cost=12) | ✅ | ❌ | **Algorithm comparison** — quantify slowdown vs SHA-256. |
-| **D** | `user21`–`user25` | Strong | Argon2id (t=1, m=64MB, p=1) | ✅ | ✅ | **Pepper defense** — server-only secret applied for these users. |
-| **E** | `user26`–`user30` | Strong | Argon2id (t=1, m=64MB, p=1) | ✅ | ❌ | **Pepper control** — Argon2id without pepper. |
-
-### Notes
-- **Salt** is per-user and stored in `users.json` (may be empty for baseline users).
-- **Pepper** is a global server-only secret loaded from environment variable `MAMAN16_PEPPER` (never stored in `users.json`).
-- **TOTP (2FA)** is enabled for selected users via the `totp_secret` field (e.g., `user01`, `user04`, `user07`, ...).
-
----
 
 ## Security Mechanisms Implemented
 The server supports the following defenses (toggle via CLI flags):
@@ -93,24 +80,20 @@ The server supports the following defenses (toggle via CLI flags):
 
 ---
 
-## Log Format (Required)
-All authentication attempts are written to:
+## Log Format
+each defence is automatically create a log file with the defences in its name
 
-`logs/attempts.log` (JSON-lines)
+Each entry includes:
 
-Each entry includes (minimum required fields):
-- `timestamp`
-- `group_seed`
-- `username`
-- `hash_mode`
-- `protection_flags`
-- `result` (`success` / `failure`)
-- `latency_ms`
-
-Additional helpful fields (for analysis/debugging):
-- `category`
-- `status` (`success` / `failure`, same as result)
-- `detail` (fine-grained reason such as `fail_password`, `fail_locked`, etc.)
+- "timestamp"
+- "group_seed"
+- "username"
+- "category"
+- "password_tried"
+- "latency_ms"
+- "global_count"
+- "result"
+- "detail"
 
 ---
 
@@ -133,7 +116,7 @@ pip install -r requirements.txt
 
 ### 1) Start the server (baseline)
 ```bash
-python server.py --port 5000
+python server.py
 ```
 
 ### 2) Start the server with protections enabled
@@ -148,7 +131,7 @@ python server.py --rate-limit --lockout --captcha --totp --pepper --port 5000
 Windows PowerShell:
 ```powershell
 $env:MAMAN16_PEPPER="your_lab_pepper"
-python server.py --rate-limit --lockout --captcha --totp --pepper --port 5000
+python server.py --rate-limit --lockout --captcha --totp --pepper
 ```
 
 Health check:
@@ -165,59 +148,42 @@ curl "http://127.0.0.1:5000/admin/get_captcha_token?group_seed=6631928"
 
 ## Running Experiments
 
-### 1) Generate users (if needed)
+### 1) Generate users base (if needed)
 ```bash
 python generate_users.py
 ```
+### 2) Generate users hashes
+python generate_server_db.py --hash/salt/pepper
 
-### 2) Run attacks
+### 3) Run attacks
 Brute force:
 ```bash
-python attack_bruteforce.py --username user01 --category weak --attempts 2000 --tag groupA
+python attacker_bf.py
 ```
 
 Password spraying:
 ```bash
-python attack_spraying.py --url http://127.0.0.1:5000/login --delay 0 --tag groupA
+python attacker_spraying.py
 ```
 
-Full suite runner:
-```bash
-python run_experiments.py
-```
-
-### Fairness note
-For **protection-enabled** configurations (rate-limit/lockout/captcha/totp), experiments should be executed **sequentially** (not concurrently) to avoid interference from server load.
-
----
 
 ## Log Analysis
 Run the analysis script to generate summary tables and graphs:
 
 ```bash
-python analysis_logs.py
+python analyze_result.py
 ```
 
 Outputs are written to:
-- `analysis_output/final_summary_table.csv`
-- `analysis_output/*.png`
+- `final_summary_report.txt`
+
 
 The analysis includes:
 - Total attempts
 - Attempts per second
 - Time to first success (if any)
 - Latency mean / median / p90
-- Extrapolation for strong-password keyspace using measured attempts/sec
-
----
-
-## Reproducibility
-To reproduce results:
-1. Use the same `users.json` (includes `group_seed` and `used_pepper` flags).
-2. If pepper is enabled, set the same `MAMAN16_PEPPER` value used during generation.
-3. Start the server with the exact same protection flags.
-4. Run attack scripts.
-5. Run `analysis_logs.py` on the produced logs.
+- Extrapolation for cracking password using measured attempts/sec
 
 ---
 
