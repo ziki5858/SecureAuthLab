@@ -1,0 +1,362 @@
+[
+    {
+        "username": "weak_1",
+        "password": "87a65adbe7f737f3fae081897a12faaac07aa7a6c7b64d541196acb99ae55535",
+        "category": "weak",
+        "salt": "2c07811c982f0fd03b019217e93ff3d26641bde88904abf96071b149992f3e35",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_2",
+        "password": "e31e2da374008a970fa383d8949a29c280d6417c54115366615ac2a5413c80c9",
+        "category": "weak",
+        "salt": "2a5768091adda31d3135edfc6363bdbe9d80224704db2e85934b714f63048ac3",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_3",
+        "password": "c1c05c9065171eda18f28459bcc0aea1470395e74e131b9f39b4a133e3e366ec",
+        "category": "weak",
+        "salt": "8403fba821d084414d7d91ceb5f91051e7ea36c749a93b3afeb89210a765185b",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_4",
+        "password": "06349990d523c289cd364bacf58d94cf6b6fa46de88a3fcf09d3443f7d982831",
+        "category": "weak",
+        "salt": "763738eb22891130f278f22dac492245d84f8ebcb736020c581848cc5678966b",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_5",
+        "password": "15f53f48c1957f1ffa30d854a83cf44ea1da753880530c35d5f2879a744d3740",
+        "category": "weak",
+        "salt": "5bf8022db2e92d5750dc6a13de5f49a2d7b3447d38be46764d0a826bcd8a7c67",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_6",
+        "password": "fec9ac8b6611f62ca99eabc67a6e52b5c22cc057ed1ff75249d3925cd7958e4d",
+        "category": "weak",
+        "salt": "3e9be30b1c877cb4f238872ffa7339518d986fda2344759688224363afb4d02b",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_7",
+        "password": "ceb38ca8437bffca8649ca79d5703fefae97a52bd543def658a31f875a6e11a3",
+        "category": "weak",
+        "salt": "64fef7aed8d5810bc8ac3c214b669322fa360c4aae39f21741e5fded62234d9e",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_8",
+        "password": "050551ac18db7c3271101c2045f6f07b9ba427f7acea35ea181215f7bcd14fb1",
+        "category": "weak",
+        "salt": "c5cf60143a492b3e5b47879d0c09d2ca32cdc728873895f5d4a62ad300340639",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_9",
+        "password": "44d1c411f53cf9a1ea257bac4e2b9421f4f4e87e040e17c6534512409fe90caf",
+        "category": "weak",
+        "salt": "364ba72bfeda50887f1adbcd062676c91b622f7a9dd9a53a2e06c729b208144b",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "weak_10",
+        "password": "13c2aad3ab1e4cf5eb86034556edcd1a482a0c0a02b13cb8a6a27b90996c16c1",
+        "category": "weak",
+        "salt": "9726cfc2ef5ce872a8e5063aa08e3b968ed040b8b1fa60e9ba559b42d79ff130",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_11",
+        "password": "ef108b48379473b24d125e90df59f50bc89564f8c69dc935409bbecf511b4a47",
+        "category": "medium",
+        "salt": "ece6641b50f53a7d6d21e88a2749dad8c5823735bbddbd4fd9e378c2c60e219d",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_12",
+        "password": "ceaadee7e58955b0f995753648f771dedfa9bea76d99593b05be371bbe95edf8",
+        "category": "medium",
+        "salt": "895e5b0905bb9b8088ddf317a4e89416d520d4e414472e777eb60a08514b7511",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_13",
+        "password": "35e2b3dc4c4cd01b48d449c7c67f743b480eb48d40398f6e43b79865a459d2eb",
+        "category": "medium",
+        "salt": "1173c5e7e0b09e76eb022425a7cf21c33959152bb0e23c60f2c90dc087707fc4",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_14",
+        "password": "a867e73ae9864388e903d0dc5f7c6bdd86eeb3ffcc4d9de5ad205434fd99d23e",
+        "category": "medium",
+        "salt": "36d6843f21e40e389ecdb41c628e882ba361ab8f496041b70fcbf228eaf2f395",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_15",
+        "password": "14d3f6f81c3b677d5e1cb10402f3cb0123d27594e7393a22beba399c17b2659f",
+        "category": "medium",
+        "salt": "ec53f5830f7a7c81fdeec5091133c7c8f3367232a7de71f220fc88ecf2ca9875",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_16",
+        "password": "5e753df4c834151b50f36eb0e48531e56a8b4d4b79aab4da4c05122183f52c96",
+        "category": "medium",
+        "salt": "919624bc48c04bc626dc18082a80466be3212db9f6c25370e5f8d10d0d66c3ad",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_17",
+        "password": "65a7e3b50601335aac7f8140b1857ce172ea48a1da12540a7c00456429e02687",
+        "category": "medium",
+        "salt": "d7a3bce332bb96b21bbd23dc8a67bfbed73105359b704ff1dc8d751aff0b365a",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_18",
+        "password": "d32f04b753fa9972b3be805ab9caf9844fde69c5ce68ddb2d5453f9be418587c",
+        "category": "medium",
+        "salt": "88da7a429b176ea1c578929314c22aa2f7f567fee7981b4e064472c0d4396940",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_19",
+        "password": "db69f8190ffe3ef69ad7437266f27b3622fac8234cead3896497d878bceccf2c",
+        "category": "medium",
+        "salt": "7ed0b767dab24d3bfa1544f033930f019bbdb6acbb496f116327c4f51a8d25e0",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "medium_20",
+        "password": "e6b5a6e96eaa643c8963dbae85ad3ae605d742984fd6a4c2de52e3dc03e71d8c",
+        "category": "medium",
+        "salt": "7b94148ffb541d00c198e6d24a5fc711f884cb8342e6ce36821d726512ec2e47",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_21",
+        "password": "5daf1dd47bb91a9530955d3139ae6dfa9af728d29a4b5ecb7cb34ee487451f28",
+        "category": "strong",
+        "salt": "1e285cb55c0aa51df3909d9b6d89f5582ab59572348d5fc3b56afb0fe6f74f3f",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_22",
+        "password": "4ce677dcb6e0f263977fcac94b1cf0d93dfc95d4a127b6c1bce435307f0539fe",
+        "category": "strong",
+        "salt": "e8a1788ce66633836df6dbbd6707f28f3638e25670b402ebc86c2a4cd650cae7",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_23",
+        "password": "d969cc6fb03624b41769ff755747672193e52312c5457d2c8dcacb523edf0cc4",
+        "category": "strong",
+        "salt": "78756bfe8416e29eabcbb99955e311a8716ad0f916c2f27f31817117836ec467",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_24",
+        "password": "f352ecfcb0763482cba69d4e0815d060752d8924f01455b3cc665aa42f90fc27",
+        "category": "strong",
+        "salt": "e0693cdca88609b9c67fe829eaac37dd13e3556b2d43be4b4daae0c17d5923f8",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_25",
+        "password": "2147f2e1ebf47cf9e3101486016a7637563c3f06ca80b8ea212fd9827d6331d7",
+        "category": "strong",
+        "salt": "1c0678c8dd360552d8904e287d96970d6fd9545cee934fa6649cb2483dc56019",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_26",
+        "password": "d7016fa06a9be8a159ff8653ea374cc264f914d6f2c395c453d7d85f68cd7965",
+        "category": "strong",
+        "salt": "30d66846903d90609b57ab2a56c827065b5eeecdeb2832a540e30f0882ed6cb2",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_27",
+        "password": "7860ba78c66ddc653223f3a93d7f0359cb83b118cc664c4c7fc949dbc107b6ed",
+        "category": "strong",
+        "salt": "27be6891b2fdb6d23e6f1db5b2965754e22678454129b6f59acd89675c2d67d0",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_28",
+        "password": "f401991d0974a20dde98d6a5f0de8fbbcb8d283f57068a8777939d3060f227c9",
+        "category": "strong",
+        "salt": "156da12a2806676f7e44f808825ad260aa2a7fac5415cf9e592121d4b5d33700",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_29",
+        "password": "5bea67407b2cfa85430d5a036f3b8e054c87383e3333272d3f21cd118cf3efe9",
+        "category": "strong",
+        "salt": "45210c931ea7ada30086177500c5c22ddc4e54328d66089143918668f9ff4104",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "strong_30",
+        "password": "f46528c42d70c0a9e76012c2521f17df8cfd5ec10a12e9b8fa92ae5ea67492a9",
+        "category": "strong",
+        "salt": "d180ec69deacf8ea377e2a132984428f70cc8e87d3c439a455493f537a81bbee",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "common_31",
+        "password": "72d22a3102d5416dd9a4e2899c60475b535d4a50ba3f1a69f1955e27be577601",
+        "category": "common",
+        "salt": "adf97caff6b92d5fd6ea88396c3e6a3b409d7e763dac6cc680837a1200ec093b",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "common_32",
+        "password": "cac1ec03b63e03e8365ac00ad3d1687566012c226172a837e5a35c51fb8eb803",
+        "category": "common",
+        "salt": "fec41a32808c74cd4cd2bd83e412147b2c9f1cb5a2416723e4f668e3bf42ef17",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "common_33",
+        "password": "73a13455c3617704eba7611a6718ed47172a75c435698d530399915ce411420a",
+        "category": "common",
+        "salt": "efda46966b1850c1dea0fadc54beda5cc90ada3726c32fa179e3fa5935f8f98a",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "common_34",
+        "password": "9fbf5917d35375688256ed4f96fe4c586a0bc1df7facbfe33350db9ce8d547e7",
+        "category": "common",
+        "salt": "7d537af114eac88761c9193e1d0315d2a93c1f21aa5c60ab5a736da2ecd06743",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "common_35",
+        "password": "4fe62d2bd0007817e846e95cb7a7c3457b35ac85f4154d75ce92f0bb9fca6ec7",
+        "category": "common",
+        "salt": "24db5c45f62c068e4f1e4655db8c11c5b1fcffcd01cbad9e9c5a9d177d5624c0",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    },
+    {
+        "username": "Group_seed",
+        "password": "984eb8e3218cb650b7d9f501fcddd783798989d89dcee4f9ae8a1ad114148d78",
+        "category": "common",
+        "salt": "29c0abf6c47dde78d8ae98dd152c496b30008d6b8726305e55e8d15dde7c8259",
+        "totp_secret": false,
+        "hash_mode": "sha",
+        "used_pepper": false,
+        "GROUP_SEED": "12686840"
+    }
+]
